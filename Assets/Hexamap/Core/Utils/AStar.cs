@@ -6,133 +6,255 @@ namespace Hexamap
 {
     public static class AStar
     {
+        // 노드 풀링을 위한 캐시
         private static Dictionary<Coords, Node> _allNodes = new Dictionary<Coords, Node>();
+        private static Queue<Node> _nodePool = new Queue<Node>();
+        private static readonly int MAX_POOL_SIZE = 1000;
+
+        // 우선순위 큐 구현 (MinHeap)
+        private class PriorityQueue<T> where T : IComparable<T>
+        {
+            private List<T> _heap = new List<T>();
+
+            public int Count => _heap.Count;
+
+            public void Enqueue(T item)
+            {
+                _heap.Add(item);
+                int childIndex = _heap.Count - 1;
+                while (childIndex > 0)
+                {
+                    int parentIndex = (childIndex - 1) / 2;
+                    if (_heap[childIndex].CompareTo(_heap[parentIndex]) >= 0)
+                        break;
+                    
+                    T temp = _heap[childIndex];
+                    _heap[childIndex] = _heap[parentIndex];
+                    _heap[parentIndex] = temp;
+                    childIndex = parentIndex;
+                }
+            }
+
+            public T Dequeue()
+            {
+                if (_heap.Count == 0)
+                    throw new InvalidOperationException("Queue is empty");
+
+                T result = _heap[0];
+                int lastIndex = _heap.Count - 1;
+                _heap[0] = _heap[lastIndex];
+                _heap.RemoveAt(lastIndex);
+
+                if (_heap.Count > 0)
+                {
+                    int parentIndex = 0;
+                    while (true)
+                    {
+                        int leftChildIndex = parentIndex * 2 + 1;
+                        int rightChildIndex = parentIndex * 2 + 2;
+                        int smallestIndex = parentIndex;
+
+                        if (leftChildIndex < _heap.Count && _heap[leftChildIndex].CompareTo(_heap[smallestIndex]) < 0)
+                            smallestIndex = leftChildIndex;
+
+                        if (rightChildIndex < _heap.Count && _heap[rightChildIndex].CompareTo(_heap[smallestIndex]) < 0)
+                            smallestIndex = rightChildIndex;
+
+                        if (smallestIndex == parentIndex)
+                            break;
+
+                        T temp = _heap[parentIndex];
+                        _heap[parentIndex] = _heap[smallestIndex];
+                        _heap[smallestIndex] = temp;
+                        parentIndex = smallestIndex;
+                    }
+                }
+
+                return result;
+            }
+
+            public T Peek()
+            {
+                if (_heap.Count == 0)
+                    throw new InvalidOperationException("Queue is empty");
+                return _heap[0];
+            }
+        }
 
         public static List<Coords> FindPath(Section start, Section end, HashSet<Coords> available, HashSet<Coords> others, Func<int> randomCost = null)
         {
-
             HashSet<Coords> allAvailable = available
                 .Concat(start.Tiles.Select(t => t.Coords))
                 .Concat(end.Tiles.Select(t => t.Coords))
                 .ToHashSet();
 
-            Node nodeStart = new Node() { Coords = getCentroid(start) };
-            Node nodeEnd = new Node() { Coords = getCentroid(end) };
+            Node nodeStart = GetNode(getCentroid(start));
+            Node nodeEnd = GetNode(getCentroid(end));
 
-            List<Node> path = new List<Node>();
-            List<Node> openList = new List<Node>();
-            List<Node> closedList = new List<Node>();
+            // 우선순위 큐 사용으로 성능 향상
+            var openList = new PriorityQueue<Node>();
+            var closedSet = new HashSet<Coords>();
+            var gScore = new Dictionary<Coords, int>();
+            var fScore = new Dictionary<Coords, int>();
 
-            Node nodeCurrent = nodeStart;
+            // 초기화
+            gScore[nodeStart.Coords] = 0;
+            fScore[nodeStart.Coords] = CalculateHeuristic(nodeStart.Coords, nodeEnd.Coords);
+            openList.Enqueue(nodeStart);
 
-            openList.Add(nodeStart);
-
-            while (openList.Count != 0)
+            while (openList.Count > 0)
             {
-                nodeCurrent = openList[0];
-                openList.Remove(nodeCurrent);
-                closedList.Add(nodeCurrent);
+                Node current = openList.Dequeue();
 
-                nodeCurrent.Neighbours = getNeighbourNodes(nodeCurrent).ToList();
-
-                foreach (var n in nodeCurrent.Neighbours)
+                if (current.Coords.Equals(nodeEnd.Coords))
                 {
-                    if (!allAvailable.Contains(n.Coords))
-                        continue;
-
-                    var n1 = n;
-                    if (!closedList.Exists(node => node.Coords.Equals(n1.Coords)))
-                        if (!openList.Exists(node => node.Coords.Equals(n.Coords)))
-                        {
-                            n.Parent = nodeCurrent;
-                            n.Cost = n.Parent.Cost + 10;
-                            if (others.Contains(n.Coords))
-                            {
-                                n.Cost -= 8;
-                            }
-                            if (randomCost != null)
-                                n.Cost += randomCost.Invoke();
-                            n.Distance = Math.Abs(n.Coords.X - nodeEnd.Coords.X) + Math.Abs(n.Coords.Y - nodeEnd.Coords.Y);
-                            openList.Add(n);
-                            openList = openList.OrderBy(node => node.Heuristic).ToList();
-                        }
+                    return ReconstructPath(current, nodeStart);
                 }
 
-                if (closedList.Last().Coords.Equals(nodeEnd.Coords))
-                    break;
+                closedSet.Add(current.Coords);
+
+                foreach (var neighbor in GetNeighbourNodes(current))
+                {
+                    if (!allAvailable.Contains(neighbor.Coords) || closedSet.Contains(neighbor.Coords))
+                        continue;
+
+                    int tentativeGScore = gScore[current.Coords] + 10;
+                    
+                    // others에 포함된 좌표는 비용 감소
+                    if (others.Contains(neighbor.Coords))
+                        tentativeGScore -= 8;
+
+                    if (randomCost != null)
+                        tentativeGScore += randomCost.Invoke();
+
+                    if (!gScore.ContainsKey(neighbor.Coords) || tentativeGScore < gScore[neighbor.Coords])
+                    {
+                        neighbor.Parent = current;
+                        gScore[neighbor.Coords] = tentativeGScore;
+                        fScore[neighbor.Coords] = tentativeGScore + CalculateHeuristic(neighbor.Coords, nodeEnd.Coords);
+                        
+                        openList.Enqueue(neighbor);
+                    }
+                }
             }
 
-            if (!closedList.Last().Coords.Equals(nodeEnd.Coords))
-                return null;
-
-            Node tmp = closedList.First(n => n == nodeCurrent.Parent);
-            while (tmp != nodeStart && tmp != null)
-            {
-                path.Add(tmp);
-                tmp = tmp.Parent;
-            }
-
-            truncatePath(path, start);
-            path.Reverse();
-            truncatePath(path, end);
-
-            return path.Select(n => n.Coords).Intersect(available).ToList();
+            return null; // 경로를 찾지 못함
         }
 
         public static List<Coords> FindPath(Coords start, Coords end)
         {
+            Node nodeStart = GetNode(start);
+            Node nodeEnd = GetNode(end);
 
-            Node nodeStart = new Node() { Coords = start };
-            Node nodeEnd = new Node() { Coords = end };
+            // 우선순위 큐 사용
+            var openList = new PriorityQueue<Node>();
+            var closedSet = new HashSet<Coords>();
+            var gScore = new Dictionary<Coords, int>();
+            var fScore = new Dictionary<Coords, int>();
 
-            List<Node> path = new List<Node>();
-            List<Node> openList = new List<Node>();
-            List<Node> closedList = new List<Node>();
+            // 초기화
+            gScore[nodeStart.Coords] = 0;
+            fScore[nodeStart.Coords] = CalculateHeuristic(nodeStart.Coords, nodeEnd.Coords);
+            openList.Enqueue(nodeStart);
 
-            Node nodeCurrent = nodeStart;
-
-            openList.Add(nodeStart);
-
-            while (openList.Count != 0)
+            while (openList.Count > 0)
             {
-                nodeCurrent = openList[0];
-                openList.Remove(nodeCurrent);
-                closedList.Add(nodeCurrent);
+                Node current = openList.Dequeue();
 
-                nodeCurrent.Neighbours = getNeighbourNodes(nodeCurrent).ToList();
-
-                foreach (var n in nodeCurrent.Neighbours)
+                if (current.Coords.Equals(nodeEnd.Coords))
                 {
-
-                    var n1 = n;
-                    if (!closedList.Exists(node => node.Coords.Equals(n1.Coords)))
-                        if (!openList.Exists(node => node.Coords.Equals(n.Coords)))
-                        {
-                            n.Parent = nodeCurrent;
-                            n.Cost = n.Parent.Cost + 10;
-                            n.Distance = Math.Abs(n.Coords.X - nodeEnd.Coords.X) + Math.Abs(n.Coords.Y - nodeEnd.Coords.Y);
-                            openList.Add(n);
-                            openList = openList.OrderBy(node => node.Heuristic).ToList();
-                        }
+                    return ReconstructPath(current, nodeStart);
                 }
 
-                if (closedList.Last().Coords.Equals(nodeEnd.Coords))
-                    break;
+                closedSet.Add(current.Coords);
+
+                foreach (var neighbor in GetNeighbourNodes(current))
+                {
+                    if (closedSet.Contains(neighbor.Coords))
+                        continue;
+
+                    int tentativeGScore = gScore[current.Coords] + 10;
+
+                    if (!gScore.ContainsKey(neighbor.Coords) || tentativeGScore < gScore[neighbor.Coords])
+                    {
+                        neighbor.Parent = current;
+                        gScore[neighbor.Coords] = tentativeGScore;
+                        fScore[neighbor.Coords] = tentativeGScore + CalculateHeuristic(neighbor.Coords, nodeEnd.Coords);
+                        
+                        openList.Enqueue(neighbor);
+                    }
+                }
             }
 
-            if (!closedList.Last().Coords.Equals(nodeEnd.Coords))
-                return null;
+            return null; // 경로를 찾지 못함
+        }
 
-            Node tmp = closedList.First(n => n == nodeCurrent?.Parent);
-            while (tmp != nodeStart && tmp != null)
+        // 경로 재구성 함수
+        private static List<Coords> ReconstructPath(Node endNode, Node startNode)
+        {
+            var path = new List<Coords>();
+            Node current = endNode;
+
+            while (current != null && !current.Coords.Equals(startNode.Coords))
             {
-                path.Add(tmp);
-                tmp = tmp.Parent;
+                path.Add(current.Coords);
+                current = current.Parent;
             }
 
             path.Reverse();
+            return path;
+        }
 
-            return path.Select(n => n.Coords).ToList();
+        // 휴리스틱 함수 (맨해튼 거리)
+        private static int CalculateHeuristic(Coords from, Coords to)
+        {
+            return Math.Abs(from.X - to.X) + Math.Abs(from.Y - to.Y);
+        }
+
+        // 노드 풀링을 통한 메모리 효율성 개선
+        private static Node GetNode(Coords coords)
+        {
+            if (_allNodes.TryGetValue(coords, out Node existingNode))
+            {
+                return existingNode;
+            }
+
+            Node newNode;
+            if (_nodePool.Count > 0)
+            {
+                newNode = _nodePool.Dequeue();
+                newNode.Reset(coords);
+            }
+            else
+            {
+                newNode = new Node(coords);
+            }
+
+            _allNodes[coords] = newNode;
+            return newNode;
+        }
+
+        // 노드 풀 정리
+        public static void ClearNodePool()
+        {
+            _allNodes.Clear();
+            _nodePool.Clear();
+        }
+
+        // 메모리 사용량 제한
+        private static void LimitMemoryUsage()
+        {
+            if (_allNodes.Count > MAX_POOL_SIZE)
+            {
+                var keysToRemove = _allNodes.Keys.Take(_allNodes.Count - MAX_POOL_SIZE / 2).ToList();
+                foreach (var key in keysToRemove)
+                {
+                    var node = _allNodes[key];
+                    node.Reset();
+                    _nodePool.Enqueue(node);
+                    _allNodes.Remove(key);
+                }
+            }
         }
 
         // Find at which index an element of the path meet the section and discard every other element after this one
@@ -145,24 +267,13 @@ namespace Hexamap
                 path.RemoveRange(firstContactIndex + 1, path.Count - firstContactIndex - 1);
         }
 
-        private static List<Node> getNeighbourNodes(Node node)
+        private static List<Node> GetNeighbourNodes(Node node)
         {
             var neighbourNodes = new List<Node>();
 
             foreach (Coords c in node.Coords.Neighbours)
             {
-                Node neighbourNode;
-
-                if (_allNodes.ContainsKey(c))
-                {
-                    neighbourNode = _allNodes[c];
-                }
-                else
-                {
-                    neighbourNode = new Node() {Coords = c};
-                    _allNodes[c] = neighbourNode;
-                }
-
+                Node neighbourNode = GetNode(c);
                 neighbourNodes.Add(neighbourNode);
             }
 
@@ -180,7 +291,7 @@ namespace Hexamap
             return new Coords(avgX, avgY);
         }
 
-        private class Node
+        private class Node : IComparable<Node>
         {
             public Node Parent;
             public Coords Coords;
@@ -188,6 +299,31 @@ namespace Hexamap
             public int Cost;
             public int Distance;
             public float Heuristic => Distance + Cost;
+
+            public Node()
+            {
+                Reset();
+            }
+
+            public Node(Coords coords)
+            {
+                Coords = coords;
+                Reset();
+            }
+
+            public void Reset(Coords coords = default)
+            {
+                Parent = null;
+                Coords = coords;
+                Neighbours = null;
+                Cost = 0;
+                Distance = 0;
+            }
+
+            public int CompareTo(Node other)
+            {
+                return Heuristic.CompareTo(other.Heuristic);
+            }
         }
     }
 }

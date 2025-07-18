@@ -182,4 +182,11 @@ public enum ETileMouseState
     DronePrepared
 }
 
+public enum StructureType
+{
+    Tower,
+    Production,
+    Army
+}
+
 #endregion
