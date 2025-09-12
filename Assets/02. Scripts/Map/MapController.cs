@@ -555,10 +555,6 @@ public class MapController : Singleton<MapController>
         CleanupVisibilityCache();
     }
 
-    /// <summary>
-    /// 구조물 렌더링을 최적화하는 함수
-    /// SetActive 대신 Renderer 컴포넌트를 직접 제어하여 더 효율적으로 처리
-    /// </summary>
     private void OptimizeStructureRendering()
     {
         List<StructureObject> structureObjects =
@@ -589,10 +585,7 @@ public class MapController : Singleton<MapController>
         }
     }
 
-    /// <summary>
-    /// 타일 렌더링을 최적화하는 함수
-    /// 배치 처리를 통해 성능 향상
-    /// </summary>
+
     private void OptimizeTileRendering()
     {
         var allTiles = GetAllTiles();
@@ -632,15 +625,11 @@ public class MapController : Singleton<MapController>
             }
         }
         
-        // 배치 처리로 성능 향상
+        // 배치 처리
         BatchSetVisibility(toShow, true);
         BatchSetVisibility(toHide, false);
     }
-
-    /// <summary>
-    /// 오브젝트의 가시성을 설정하는 함수
-    /// SetActive 대신 Renderer 컴포넌트를 직접 제어
-    /// </summary>
+    
     private void SetObjectVisibility(GameObject obj, bool visible)
     {
         if (obj == null) return;

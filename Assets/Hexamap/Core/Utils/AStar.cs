@@ -11,7 +11,7 @@ namespace Hexamap
         private static Queue<Node> _nodePool = new Queue<Node>();
         private static readonly int MAX_POOL_SIZE = 1000;
 
-        // 우선순위 큐 구현 (MinHeap)
+        // 우선순위 큐 구현 (최소 힙)
         private class PriorityQueue<T> where T : IComparable<T>
         {
             private List<T> _heap = new List<T>();
@@ -38,7 +38,7 @@ namespace Hexamap
             public T Dequeue()
             {
                 if (_heap.Count == 0)
-                    throw new InvalidOperationException("Queue is empty");
+                    throw new InvalidOperationException("큐가 비어있습니다.");
 
                 T result = _heap[0];
                 int lastIndex = _heap.Count - 1;
@@ -76,7 +76,7 @@ namespace Hexamap
             public T Peek()
             {
                 if (_heap.Count == 0)
-                    throw new InvalidOperationException("Queue is empty");
+                    throw new InvalidOperationException("큐가 비어있습니다");
                 return _heap[0];
             }
         }
@@ -186,7 +186,7 @@ namespace Hexamap
                 }
             }
 
-            return null; // 경로를 찾지 못함
+            return null;
         }
 
         // 경로 재구성 함수
@@ -255,16 +255,6 @@ namespace Hexamap
                     _allNodes.Remove(key);
                 }
             }
-        }
-
-        // Find at which index an element of the path meet the section and discard every other element after this one
-        private static void truncatePath(List<Node> path, Section section)
-        {
-            var frontiers = Coords.Expand(section.LimitsCoords.ToList(), 1);
-            int firstContactIndex = path.FindIndex(n => frontiers.Contains(n.Coords));
-
-            if (firstContactIndex != -1 && firstContactIndex != path.Count - 1)
-                path.RemoveRange(firstContactIndex + 1, path.Count - firstContactIndex - 1);
         }
 
         private static List<Node> GetNeighbourNodes(Node node)
