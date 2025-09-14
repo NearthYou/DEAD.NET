@@ -3,10 +3,8 @@ using UnityEngine;
 
 public class TutorialManager : Singleton<TutorialManager>
 {
-    // 튜토리얼 씬 관리 스크립트
-
     [Header("Tutorial")]
-    [SerializeField]  TutorialController tutorialController;
+    [SerializeField] TutorialController tutorialController;
 
     public TutorialController GetTutorialController()
     {
@@ -28,25 +26,36 @@ public class TutorialManager : Singleton<TutorialManager>
 
     public void StartTutorial()
     {
+        if (GameManager.instance.ShouldSkipTutorial())
+        {
+            SkipTutorialAndStartMain();
+            return;
+        }
+
         UIManager.instance.GetPageController().SetTutorialSelect();
-
         UIManager.instance.GetCraftingUiController().AddBatteryCombine();
-
         UIManager.instance.GetAlertController().SetAlert("note", false);
-
         UIManager.instance.GetInventoryController().AddItemByItemCode("ITEM_PLASMA");
         UIManager.instance.GetInventoryController().AddItemByItemCode("ITEM_CARBON");
         UIManager.instance.GetInventoryController().AddItemByItemCode("ITEM_STEEL");
-
         tutorialController.StartDialogue();
     }
 
     public void EndTutorial()
     {
         UIManager.instance.GetCraftingUiController().RemoveBatteryCombine();
-
         UIManager.instance.GetQuestController().StartMainQuest();
+        Destroy(this);
+    }
 
+    private void SkipTutorialAndStartMain()
+    {
+        UIManager.instance.GetInventoryController().AddItemByItemCode("ITEM_PLASMA");
+        UIManager.instance.GetInventoryController().AddItemByItemCode("ITEM_CARBON");
+        UIManager.instance.GetInventoryController().AddItemByItemCode("ITEM_STEEL");
+        UIManager.instance.GetInventoryController().AddItemByItemCode("ITEM_DISTURBE");
+        UIManager.instance.GetInventoryController().AddItemByItemCode("ITEM_FINDOR");
+        UIManager.instance.GetQuestController().StartMainQuest();
         Destroy(this);
     }
 }

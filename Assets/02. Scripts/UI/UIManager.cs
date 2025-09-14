@@ -50,7 +50,7 @@ public class UIManager : Singleton<UIManager>
     {
         currUIStack.Push(_uiName);
 
-        Debug.LogError("currUIStack : " + currUIStack.Peek());
+        //Debug.LogError("currUIStack : " + currUIStack.Peek());
     }
 
     public void PopCurrUI()

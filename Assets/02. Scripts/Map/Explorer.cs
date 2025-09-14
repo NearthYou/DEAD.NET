@@ -12,6 +12,7 @@ public class Explorer : MonoBehaviour
     private bool goToMap;
     private bool isIdle;
     List<Coords> movePath;
+    private int fogRevealerIndex = -1;
 
     WaitForSeconds delay05 = new WaitForSeconds(0.5f);
     WaitForSeconds delay1 = new WaitForSeconds(1.5f);
@@ -64,17 +65,25 @@ public class Explorer : MonoBehaviour
 
             if (curTile == targetTile)
             {
-                // 자원
-                FischlWorks_FogWar.csFogWar.instance.AddFogRevealer(new FischlWorks_FogWar.csFogWar.FogRevealer(gameObject.transform, 2, false));
+                var fogRevealer = new FischlWorks_FogWar.csFogWar.FogRevealer(gameObject.transform, 3, false);
+                FischlWorks_FogWar.csFogWar.instance.AddFogRevealer(fogRevealer);
+                fogRevealerIndex = FischlWorks_FogWar.csFogWar.instance._FogRevealers.Count - 1;
+                
+                var sightTiles = MapController.instance.GetSightTiles(curTile);
+                foreach (var tile in sightTiles)
+                {
+                    var tileBase = ((GameObject)tile.GameEntity).GetComponent<TileBase>();
+                    if (tileBase != null)
+                    {
+                        tileBase.SetPlayerSight(true);
+                    }
+                }
+                
                 lifeTime -= 1;
             }
-
         }
         else
         {
-            // ����
-            Debug.Log("탐색기 대기중");
-            
             isIdle = true;
             StartCoroutine(ExplorerEffect());
         }
@@ -85,14 +94,32 @@ public class Explorer : MonoBehaviour
     {
         yield return new WaitUntil(()=> goToMap == true);
         
-        App.instance.GetMapManager().mapController.GetSightTiles(curTile);
+        var sightTiles = App.instance.GetMapManager().mapController.GetSightTiles(curTile);
+        foreach (var tile in sightTiles)
+        {
+            var tileBase = ((GameObject)tile.GameEntity).GetComponent<TileBase>();
+            if (tileBase != null)
+            {
+                tileBase.SetPlayerSight(true);
+            }
+        }
+        
         App.instance.GetMapManager().mapController.RemoveExplorer(this);
-        FischlWorks_FogWar.csFogWar.instance._FogRevealers[FischlWorks_FogWar.csFogWar.instance._FogRevealers.Count - 1].sightRange = 0;
+        
+        if (fogRevealerIndex >= 0 && fogRevealerIndex < FischlWorks_FogWar.csFogWar.instance._FogRevealers.Count)
+        {
+            FischlWorks_FogWar.csFogWar.instance._FogRevealers[fogRevealerIndex].sightRange = 0;
+        }
 
         goToMap = false;
         isIdle = false;
         yield return delay1;
-        FischlWorks_FogWar.csFogWar.instance.RemoveFogRevealer(1);
+        
+        if (fogRevealerIndex >= 0)
+        {
+            FischlWorks_FogWar.csFogWar.instance.RemoveFogRevealer(fogRevealerIndex);
+        }
+        
         Destroy(gameObject);
     }
     

@@ -8,16 +8,13 @@ public struct Controller
     bool isGameOver;
 }
 
-/// <summary>
-/// �� ���� �Ѿ�� ���� �°� ��, ĳ����, �½�ũ ������Ʈ. -> �� �Ŵ������� ����.
-/// UI, ��ȭ �ý��� ��Ʈ��.
-/// ���� ���� �� ����, ���� ����, ���� ����.
-/// �� ����.
-/// </summary>
 public class GameManager : Singleton<GameManager>
 {
     Controller controller;
     MapCamera mapCamera;
+    
+    [Header("Tutorial Settings")]
+    [SerializeField] bool skipTutorial = false;
     
     void Awake()
     {
@@ -31,39 +28,23 @@ public class GameManager : Singleton<GameManager>
 
     public void InputKey()
     {
-        //if (Input.GetKeyDown(KeyCode.Escape))
-            //QuitGame();
     }
 
     public void UpdateAllState()
     {
-        // 1. ���� ����
-
-        // 2. �� ������Ʈ
-
-        // 3. ĳ���� ���� ������Ʈ
-
-        // 4. �׽�ũ ������Ʈ
     }
 
     public void SaveGame()
     {
-        // ���� ��� ������ ����
     }
 
     public void PrevGameStart()
     {
-        // ���� ������ �ҷ�����
-
-        // �� �̵�
         SceneLoader.instance.LoadScene(1);
     }
 
     public void NewGameStart()
     {
-        // ������ �ʱ�ȭ
-
-        // �� �̵�
         SceneLoader.instance.LoadScene((int)ESceneType.Game);
         SceneLoader.instance.LoadSceneAdditive((int)ESceneType.Crafting);
         SceneLoader.instance.LoadSceneAdditive((int)ESceneType.UI);
@@ -73,8 +54,6 @@ public class GameManager : Singleton<GameManager>
 
     public void Settings()
     {
-        // ���� â
-        Debug.Log("����");
     }
 
     public void QuitGame()
@@ -84,5 +63,10 @@ public class GameManager : Singleton<GameManager>
 #else
             Application.Quit();
 #endif
+    }
+
+    public bool ShouldSkipTutorial()
+    {
+        return skipTutorial;
     }
 }

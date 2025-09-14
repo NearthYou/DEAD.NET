@@ -39,7 +39,6 @@ public class ExplorerButton : MonoBehaviour, IPointerClickHandler, IPointerEnter
             isMouseEnter = true;
             UIManager.instance.GetInfoController().isNew = true;
         }
-
     }
 
     public void OnPointerExit(PointerEventData eventData)
@@ -50,23 +49,15 @@ public class ExplorerButton : MonoBehaviour, IPointerClickHandler, IPointerEnter
             UIManager.instance.GetInfoController().HideInfo();
         }
     }
-    
 
     public void Explorer()
     {
         if (UIManager.instance.GetInventoryController().CheckFindorUsage())
         {
-            Debug.Log("탐색기 있음");
             if (App.instance.GetMapManager().CheckCanInstallDrone())
             {
-                Debug.Log("탐색기 설치 가능");
-
                 App.instance.GetMapManager().mapController.PreparingExplorer(true);
             }
-        }
-        else
-        {
-            return;
         }
     }
 }

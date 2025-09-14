@@ -239,7 +239,6 @@ public class TileBase : MonoBehaviour
 
         if (appearanceResources == null)
         {
-            Debug.Log("자원이 없습니다.");
             return null;
         }
 
@@ -395,6 +394,29 @@ public class TileBase : MonoBehaviour
     public void SetNeighborStructure()
     {
         isStructureNeighbor = true;
+    }
+
+    public void SetPlayerSight(bool inSight)
+    {
+        inPlayerSight = inSight;
+        
+        // 자원 아이콘 표시/숨김
+        if (resourceIcons != null)
+        {
+            foreach (var icon in resourceIcons)
+            {
+                if (icon != null)
+                {
+                    icon.gameObject.SetActive(inSight);
+                }
+            }
+        }
+        
+        // 구조물 표시/숨김
+        if (structureObject != null)
+        {
+            structureObject.SetActive(inSight);
+        }
     }
 
     int GetTileDataIndex()

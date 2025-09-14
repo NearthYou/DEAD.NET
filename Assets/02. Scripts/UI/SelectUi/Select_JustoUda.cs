@@ -22,7 +22,6 @@ public class Select_JustoUda : SelectBase
             UIManager.instance.PopCurrUI();
         else return;
 
-        Debug.Log("A 버튼 눌림");
         gameObject.SetActive(false);
     }
 
@@ -32,7 +31,6 @@ public class Select_JustoUda : SelectBase
             UIManager.instance.PopCurrUI();
         else return;
 
-        Debug.Log("B 버튼 눌림");
         gameObject.SetActive(false);
     }
 

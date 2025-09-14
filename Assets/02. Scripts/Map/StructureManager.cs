@@ -135,7 +135,6 @@ public class StructureManager : MonoBehaviour
         var randomTile = tileBases[randomInt];
 
         if (randomTile.Structure == null)
-            Debug.Log("비어있음");
 
         randomTile.AddSpecialItem();
     }

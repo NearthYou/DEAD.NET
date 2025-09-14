@@ -347,7 +347,6 @@ public class ZombieBase : MonoBehaviour
 
         // 사망
         zombieData.count = 0;
-        Debug.Log(gameObject.name + " 처치 완료.");
         CurrentTileUpdate(null);
         Destroy(this);
         // 시체 오브젝트 생성

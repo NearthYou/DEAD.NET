@@ -35,6 +35,12 @@ public class DroneManager : MonoBehaviour
     {
         if (set)
         {
+            if (player?.TileController?.Model == null)
+                return;
+
+            if (mapController == null)
+                return;
+
             var neighborTiles = mapController.GetTilesInRange(player.TileController.Model, 1);
             var neighborController = neighborTiles
                 .Select(x => ((GameObject)x.GameEntity).GetComponent<TileController>()).ToList();
@@ -63,6 +69,13 @@ public class DroneManager : MonoBehaviour
     
     private void GenerateExampleDisturbtor()
     {
+        if (mapPrefab?.items == null || mapPrefab.items.Length <= (int)EMabPrefab.Disturbtor || 
+            mapPrefab.items[(int)EMabPrefab.Disturbtor]?.prefab == null)
+            return;
+
+        if (player?.transform == null)
+            return;
+
         curDistrubtor = Instantiate(mapPrefab.items[(int)EMabPrefab.Disturbtor].prefab,
             player.transform.position + Vector3.up * 1.5f, Quaternion.Euler(0, 90, 0));
         curDistrubtor.transform.parent = mapTransform;
@@ -102,6 +115,13 @@ public class DroneManager : MonoBehaviour
     
     private void GenerateExampleExplorer()
     {
+        if (mapPrefab?.items == null || mapPrefab.items.Length <= (int)EMabPrefab.Explorer || 
+            mapPrefab.items[(int)EMabPrefab.Explorer]?.prefab == null)
+            return;
+
+        if (player?.transform == null)
+            return;
+
         curExplorer = Instantiate(mapPrefab.items[(int)EMabPrefab.Explorer].prefab,
             player.transform.position + Vector3.up * 1.5f, Quaternion.Euler(0, 90, 0));
         curExplorer.transform.parent = mapTransform;
@@ -119,7 +139,6 @@ public class DroneManager : MonoBehaviour
     
     public IEnumerator HandleDrones()
     {
-        // 교란기 처리
         if (distrubtors.Count > 0 && distrubtors != null)
         {
             for (int i = 0; i < distrubtors.Count; i++)
@@ -128,7 +147,6 @@ public class DroneManager : MonoBehaviour
             }
         }
 
-        // 탐사기 처리
         if (explorers.Count > 0 && explorers != null)
         {
             for (int i = 0; i < explorers.Count; i++)
@@ -182,4 +200,4 @@ public class DroneManager : MonoBehaviour
 
         return null;
     }
-} 
+}

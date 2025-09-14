@@ -286,7 +286,6 @@ public class MapController : Singleton<MapController>
             foreach (var item in Player.TileController.Model.Neighbours.Where(
                          item => item.Value == tileController.Model))
             {
-                Debug.Log("설치 시작");
                 InstallDistrubtor(tileController, item.Key);
             }
         }
@@ -858,8 +857,8 @@ public class MapController : Singleton<MapController>
     private IEnumerator GenerateMapObjects()
     {
         LoadGameData();
-        InitializeManagers();
         SpawnPlayer();
+        InitializeManagers();
         GenerateStructures();
         if (zombieManager != null)
             zombieManager.SpawnZombies(mapData.zombieCount, mapData);
@@ -892,7 +891,6 @@ public class MapController : Singleton<MapController>
 
     private void InitializeManagers()
     {
-        // 자동으로 매니저들을 찾아서 바인딩
         if (zombieManager == null)
             zombieManager = GetComponent<ZombieManager>();
         if (zombieManager == null)
@@ -908,31 +906,35 @@ public class MapController : Singleton<MapController>
         if (structureManager == null)
             structureManager = GetComponentInChildren<StructureManager>();
 
-        // 매니저가 없으면 자동 생성
         if (zombieManager == null)
         {
             zombieManager = gameObject.AddComponent<ZombieManager>();
-            Debug.Log("ZombieManager 자동 생성됨");
         }
         
         if (droneManager == null)
         {
             droneManager = gameObject.AddComponent<DroneManager>();
-            Debug.Log("DroneManager 자동 생성됨");
         }
         
         if (structureManager == null)
         {
             structureManager = gameObject.AddComponent<StructureManager>();
-            Debug.Log("StructureManager 자동 생성됨");
         }
 
-        // 매니저 초기화
         if (zombieManager != null)
             zombieManager.Initialize(this, zombiesTransform, mapPrefab);
         
         if (droneManager != null)
-            droneManager.Initialize(this, Player, mapTransform, mapPrefab);
+        {
+            if (Player == null)
+            {
+                return;
+            }
+            else
+            {
+                droneManager.Initialize(this, Player, mapTransform, mapPrefab);
+            }
+        }
         
         if (structureManager != null)
             structureManager.Initialize(this, objectsTransform, mapPrefab);

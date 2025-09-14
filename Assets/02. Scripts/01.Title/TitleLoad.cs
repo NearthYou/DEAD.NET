@@ -32,6 +32,7 @@ public class TitleLoad : MonoBehaviour
 
 
 
+
     void Awake()
     {
         Screen.SetResolution(1920, 1080, false);
@@ -89,7 +90,7 @@ public class TitleLoad : MonoBehaviour
 
 
     /// <summary>
-    /// ºñµð¿À Àç»ýÀÌ ³¡³µÀ» ¶§ ºñÈ°¼ºÈ­ÇÏ´Â ÇÔ¼ö
+    /// ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½È°ï¿½ï¿½È­ï¿½Ï´ï¿½ ï¿½Ô¼ï¿½
     /// </summary>
     /// <param name="vp"></param>
     void OnVideoEnd(VideoPlayer vp)
@@ -104,7 +105,7 @@ public class TitleLoad : MonoBehaviour
 
 
     /// <summary>
-    /// ÁÂÃø»ó´Ü ·Î±× Àç»ý
+    /// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Î±ï¿½ ï¿½ï¿½ï¿½
     /// </summary>
     void Left()
     {
@@ -117,7 +118,7 @@ public class TitleLoad : MonoBehaviour
     }
 
     /// <summary>
-    /// ¿ìÃø»ó´Ü ·Î±× Àç»ý
+    /// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Î±ï¿½ ï¿½ï¿½ï¿½
     /// </summary>
     /// <returns></returns>
     IEnumerator RightLog()
@@ -144,7 +145,7 @@ public class TitleLoad : MonoBehaviour
 
 
     /// <summary>
-    /// Å¸ÀÌÆ² Àç»ý
+    /// Å¸ï¿½ï¿½Æ² ï¿½ï¿½ï¿½
     /// </summary>
     /// <returns></returns>
     IEnumerator Title()

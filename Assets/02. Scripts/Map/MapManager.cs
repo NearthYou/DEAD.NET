@@ -374,7 +374,6 @@ public class MapManager : ManagementBase
 
     public void ResearchCancel(StructureBase structure)
     {
-        Debug.Log("조사 취소!");
     }
 
     public void MovePathDelete()
@@ -460,7 +459,6 @@ public class MapManager : ManagementBase
         
         if(resources.Find(x=> x.ItemBase.data.Code == "ITEM_GAS") != null)
         {
-            Debug.Log("에테르 디버프");
             UIManager.instance.GetPageController().SetResultPage("ACIDENT_ETHER", false);
             mapController.Player.SetHealth(false);
         }

@@ -89,7 +89,6 @@ public class Player : MonoBehaviour
         if (JungleDebuff)
         {
             // 이동
-            Debug.Log("랜덤 이동");
             yield return StartCoroutine(MoveToRandom());
             
             isJungleDebuff = false;
@@ -112,7 +111,6 @@ public class Player : MonoBehaviour
         // 이동한 타일에 좀비가 있다면 공격
         if (zombies != null)
         {
-            Debug.Log("플레이어 -> 좀비 공격.");
             AttackZombies(zombies);
         }
         else
@@ -228,7 +226,6 @@ public class Player : MonoBehaviour
         zombies.TakeDamage();
 
         //bulletsNum -= 1;
-        //Debug.Log("남은 펄스탄 개수 : " + bulletsNum);
     }
 
     public void TakeDamage(int zombieCount)
@@ -248,7 +245,6 @@ public class Player : MonoBehaviour
             durability = 0;
             isDead = true;
             UIManager.instance.GetNextDayController().isHit = true;
-            Debug.Log("내구도 부족. 게임 오버");
 
             // 게임 오버
             UIManager.instance.GetNextDayController().isOver = true;
@@ -287,9 +283,7 @@ public class Player : MonoBehaviour
     public void ClockUntil(int _duration)
     {
         clockBuffDuration = _duration;
-        Debug.Log(_duration);
         rend.material = cloakingMaterial;
-        Debug.Log(rend.material);
     }
     
     public void AddDurability(int _durability, int _amount)
