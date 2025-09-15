@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using DG.Tweening;
 using Hexamap;
+using Cysharp.Threading.Tasks;
 
 public class Explorer : MonoBehaviour
 {
@@ -30,7 +31,7 @@ public class Explorer : MonoBehaviour
         GetComponentInChildren<MeshRenderer>().material.DOFade(100, 1f);
     }
 
-    public IEnumerator Move(int walkCount = 2)
+    public async UniTask MoveAsync(int walkCount = 2)
     {
         Tile nextTile;
         Vector3 targetPos;
@@ -47,7 +48,7 @@ public class Explorer : MonoBehaviour
                 targetPos.y += 0.5f;
                 
                 gameObject.transform.DOMove(targetPos, 0.5f);
-                yield return delay05;
+                await UniTask.Delay(500);
                 curTile = nextTile;
             }
             else if (curTile != targetTile)
@@ -59,7 +60,7 @@ public class Explorer : MonoBehaviour
                     targetPos.y += 0.5f;
                     
                     gameObject.transform.DOMove(targetPos, 0.5f);
-                    yield return delay05;
+                    await UniTask.Delay(500);
                     curTile = nextTile;
                 }
             }
@@ -86,14 +87,14 @@ public class Explorer : MonoBehaviour
         else
         {
             isIdle = true;
-            StartCoroutine(ExplorerEffect());
+            ExplorerEffectAsync().Forget();
         }
         movePath.Clear();
     }
 
-    public IEnumerator ExplorerEffect()
+    public async UniTask ExplorerEffectAsync()
     {
-        yield return new WaitUntil(()=> goToMap == true);
+        await UniTask.WaitUntil(()=> goToMap == true);
         
         var sightTiles = App.instance.GetMapManager().mapController.GetSightTiles(curTile);
         foreach (var tile in sightTiles)
@@ -114,7 +115,7 @@ public class Explorer : MonoBehaviour
 
         goToMap = false;
         isIdle = false;
-        yield return delay1;
+        await UniTask.Delay(1500);
         
         if (fogRevealerIndex >= 0)
         {

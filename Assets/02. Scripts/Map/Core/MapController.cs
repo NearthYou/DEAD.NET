@@ -9,6 +9,7 @@ using TMPro;
 using Hexamap;
 using UnityEngine.EventSystems;
 using FischlWorks_FogWar;
+using Cysharp.Threading.Tasks;
 using Random = UnityEngine.Random;
 
 [System.Serializable]
@@ -83,7 +84,7 @@ public class MapController : Singleton<MapController>
         App.instance.GetMapManager().GetAdditiveSceneObjectsCoroutine();
     }
 
-    public IEnumerator GenerateMap()
+    public void GenerateMap()
     {
         hexaMap.Destroy();
 
@@ -108,7 +109,7 @@ public class MapController : Singleton<MapController>
 
         mapParentTransform.position = Vector3.forward * mapSettings.mapOffset;
 
-        yield return StartCoroutine(GenerateMapObjects());
+        GenerateMapObjects();
 
         isLoadingComplete = true;
     }
@@ -117,7 +118,7 @@ public class MapController : Singleton<MapController>
     {
         Destroy(Player);
         zombieManager?.ClearAllZombies();
-        StartCoroutine(GenerateMap());
+        GenerateMap();
     }
 
     public void SpawnTutorialZombie()
@@ -342,12 +343,12 @@ public class MapController : Singleton<MapController>
         droneManager?.InstallExplorer(tileController);
     }
 
-    public IEnumerator NextDay()
+    public async UniTask NextDayAsync()
     {
-        yield return StartCoroutine(HandlePlayerTurn());
-        yield return StartCoroutine(HandleDrones());
-        yield return StartCoroutine(HandleZombies());
-        yield return StartCoroutine(HandleEndOfDay());
+        await HandlePlayerTurnAsync();
+        HandleDrones();
+        await HandleZombiesAsync();
+        HandleEndOfDay();
     }
 
     public void CheckSumZombies()
@@ -855,7 +856,7 @@ public class MapController : Singleton<MapController>
         }
     }
 
-    private IEnumerator GenerateMapObjects()
+    private void GenerateMapObjects()
     {
         LoadGameData();
         SpawnPlayer();
@@ -864,8 +865,7 @@ public class MapController : Singleton<MapController>
         if (zombieManager != null)
             zombieManager.SpawnZombies(mapData.zombieCount, mapData);
         InitializeFogOfWar();
-        StartCoroutine(RandomTileResource(mapData.resourcePercent));
-        yield return null;
+        RandomTileResource(mapData.resourcePercent);
     }
 
     private void LoadGameData()
@@ -941,10 +941,8 @@ public class MapController : Singleton<MapController>
             structureManager.Initialize(this, objectsTransform, mapPrefab);
     }
 
-    private IEnumerator RandomTileResource(float _percent)
+    private void RandomTileResource(float _percent)
     {
-        bool complete = false;
-
         List<TileBase> tileBaseList = GetAllTiles()
             .Select(x => ((GameObject)x.GameEntity).GetComponent<TileBase>())
             .ToList();
@@ -961,12 +959,7 @@ public class MapController : Singleton<MapController>
         {
             TileBase tile = tileBaseList[i];
             tile.SpawnRandomResource();
-
-            if (i == tileBaseList.Count - 1)
-                complete = true;
         }
-
-        yield return new WaitUntil(() => complete);
 
         OcclusionCheck(Player.TileController.Model);
     }
@@ -999,7 +992,7 @@ public class MapController : Singleton<MapController>
 
         Player.UpdateCurrentTile(TileToTileController(hexaMap.Map.GetTileFromCoords(new Coords(0, 0))));
         targetTileController = Player.TileController;
-        StartCoroutine(FloatingAnimation());
+        FloatingAnimationAsync().Forget();
 
         if (structureManager != null)
         {
@@ -1014,19 +1007,19 @@ public class MapController : Singleton<MapController>
         }
     }
 
-    private IEnumerator FloatingAnimation()
+    private async UniTask FloatingAnimationAsync()
     {
-        yield return new WaitUntil(() => Player != null);
+        await UniTask.WaitUntil(() => Player != null);
         Player.StartFloatingAnimation();
     }
 
-    private IEnumerator HandlePlayerTurn()
+    private async UniTask HandlePlayerTurnAsync()
     {
         Player.ChangeClockBuffDuration();
         
         if (Player.MovePath != null)
         {
-            yield return StartCoroutine(Player.ActionDecision(targetTileController));
+            await Player.ActionDecisionAsync(targetTileController);
         }
         else
         {
@@ -1034,24 +1027,22 @@ public class MapController : Singleton<MapController>
         }
     }
 
-    private IEnumerator HandleDrones()
+    private void HandleDrones()
     {
-        yield return StartCoroutine(droneManager.HandleDrones());
+        droneManager.HandleDrones();
     }
 
-    private IEnumerator HandleZombies()
+    private async UniTask HandleZombiesAsync()
     {
-        yield return StartCoroutine(zombieManager.HandleZombies());
+        await zombieManager.HandleZombiesAsync();
     }
 
-    private IEnumerator HandleEndOfDay()
+    private void HandleEndOfDay()
     {
         // 이동 거리 충전
         Player.SetHealth(true);
         Player.TileEffectCheck();
         OcclusionCheck(Player.TileController.Model);
-        
-        yield return null;
     }
 
     private void SelectBorder(TileController tileController, ETileState state)

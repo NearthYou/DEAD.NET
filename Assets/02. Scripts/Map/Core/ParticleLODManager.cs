@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using Hexamap;
+using Cysharp.Threading.Tasks;
 
 /// <summary>
 /// 타일 파티클 시스템의 LOD 관리를 담당하는 클래스
@@ -58,7 +59,7 @@ public class ParticleLODManager : MonoBehaviour
     private void Start()
     {
         InitializeReferences();
-        StartCoroutine(InitializeParticleSystem());
+        InitializeParticleSystemAsync().Forget();
     }
     
     private void InitializeReferences()
@@ -73,9 +74,9 @@ public class ParticleLODManager : MonoBehaviour
         }
     }
     
-    private System.Collections.IEnumerator InitializeParticleSystem()
+    private async UniTask InitializeParticleSystemAsync()
     {
-        yield return new WaitUntil(() => mapController.LoadingComplete);
+        await UniTask.WaitUntil(() => mapController.LoadingComplete);
         
         // 모든 타일에서 파티클 시스템 찾기
         var allTiles = mapController.GetAllTiles();
@@ -88,7 +89,6 @@ public class ParticleLODManager : MonoBehaviour
                 RegisterTileParticles(tileObject);
             }
         }
-        
     }
     
     /// <summary>

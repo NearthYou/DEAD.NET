@@ -6,6 +6,7 @@ using UnityEngine.EventSystems;
 using Hexamap;
 using UnityEngine.Rendering.UI;
 using Yarn.Compiler;
+using Cysharp.Threading.Tasks;
 using Random = System.Random;
 
 public class MapManager : ManagementBase
@@ -49,22 +50,22 @@ public class MapManager : ManagementBase
         }
     }
 
-    private IEnumerator GetAdditiveSceneObjects()
+    private async UniTask GetAdditiveSceneObjectsAsync()
     {
-        yield return new WaitForEndOfFrame();
+        await UniTask.WaitForEndOfFrame(this);
         mainCamera = GameObject.FindGameObjectWithTag("MainCamera").GetComponent<Camera>();
         mapUIController = GameObject.FindGameObjectWithTag("MapUi").GetComponent<MapUiController>();
         mapController = GameObject.FindGameObjectWithTag("MapController").GetComponent<MapController>();
 
         mapController.InputMapData(mapData);
 
-        yield return new WaitUntil(() => mapController != null);
-        StartCoroutine(mapController.GenerateMap());
+        await UniTask.WaitUntil(() => mapController != null);
+        mapController.GenerateMap();
         mapCineCamera = GameObject.FindGameObjectWithTag("MapCamera").GetComponent<MapCamera>();
 
         AllowMouseEvent(true);
         resourceManager = GameObject.FindGameObjectWithTag("Resource").GetComponent<ResourceManager>();
-        StartCoroutine(mapCineCamera.GetMapInfo());
+        await mapCineCamera.GetMapInfoAsync();
 
         mapController.SightCheckInit();
         
@@ -73,7 +74,7 @@ public class MapManager : ManagementBase
 
     public void GetAdditiveSceneObjectsCoroutine()
     {
-        StartCoroutine(GetAdditiveSceneObjects());
+        GetAdditiveSceneObjectsAsync().Forget();
     }
 
     private void MouseOverEvents()
@@ -238,9 +239,9 @@ public class MapManager : ManagementBase
             mouseState = ETileMouseState.DronePrepared;
     }
 
-    public IEnumerator NextDayCoroutine()
+    public async UniTask NextDayCoroutineAsync()
     {
-        yield return StartCoroutine(mapController.NextDay());
+        await mapController.NextDayAsync();
         resourceManager.GetResource(mapController.Player.TileController);
         mapUIController.OffPlayerMovePoint();
         mapController.OnlyMovePointerOff();

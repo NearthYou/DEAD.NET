@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Cinemachine;
+using Cysharp.Threading.Tasks;
 
 public class MapCamera : MonoBehaviour
 {
@@ -11,9 +12,9 @@ public class MapCamera : MonoBehaviour
     private GameObject mapUi;
     public CinemachineVirtualCamera mapCamera;
 
-    public IEnumerator GetMapInfo()
+    public async UniTask GetMapInfoAsync()
     {
-        yield return new WaitForEndOfFrame();
+        await UniTask.WaitForEndOfFrame(this);
         player = GameObject.FindGameObjectWithTag("Player");
         mapUi = GameObject.FindGameObjectWithTag("MapUi").transform.GetChild(0).gameObject;
         mapCamera.Follow = player.transform;

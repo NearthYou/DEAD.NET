@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Cysharp.Threading.Tasks;
 
 public class MapUiButton : MonoBehaviour
 {
@@ -8,12 +9,12 @@ public class MapUiButton : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-        StartCoroutine(GetMapCamera());
+        GetMapCameraAsync().Forget();
     }
 
-    private IEnumerator GetMapCamera()
+    private async UniTask GetMapCameraAsync()
     {
-        yield return new WaitForEndOfFrame();
+        await UniTask.WaitForEndOfFrame(this);
         mapCamera = GameObject.FindGameObjectWithTag("MapCamera").GetComponent<MapCamera>();
     }
 

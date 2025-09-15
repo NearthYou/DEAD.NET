@@ -4,6 +4,7 @@ using System.Linq;
 using UnityEngine;
 using Hexamap;
 using DG.Tweening;
+using Cysharp.Threading.Tasks;
 
 public class DroneManager : MonoBehaviour
 {
@@ -133,11 +134,11 @@ public class DroneManager : MonoBehaviour
     public void InstallExplorer(TileController tileController)
     {
         curExplorer.GetComponent<Explorer>().Targeting(tileController.Model);
-        curExplorer.GetComponent<Explorer>().Move();
+        curExplorer.GetComponent<Explorer>().MoveAsync().Forget();
         App.instance.GetMapManager().SetIsDronePrepared(false, "");
     }
     
-    public IEnumerator HandleDrones()
+    public void HandleDrones()
     {
         if (distrubtors.Count > 0 && distrubtors != null)
         {
@@ -151,11 +152,9 @@ public class DroneManager : MonoBehaviour
         {
             for (int i = 0; i < explorers.Count; i++)
             {
-                StartCoroutine(explorers[i].GetComponent<Explorer>().Move());
+                explorers[i].GetComponent<Explorer>().MoveAsync().Forget();
             }
         }
-        
-        yield return null;
     }
     
     public void RemoveDistrubtor(Distrubtor distrubtor)

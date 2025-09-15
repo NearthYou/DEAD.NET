@@ -89,13 +89,23 @@ public class NextDayController : MonoBehaviour
         App.instance.GetMapManager().SetMapCameraPriority(false);
         transposer.m_CameraDistance = 5f;
 
-        yield return StartCoroutine(App.instance.GetMapManager().NextDayCoroutine());
+        yield return StartCoroutine(NextDayCoroutineWrapper());
 
         yield return new WaitForSeconds(1f);
 
         SetResourcesResultPage();
 
         callback?.Invoke();
+    }
+
+    IEnumerator NextDayCoroutineWrapper()
+    {
+        // UniTask를 시작하고 완료될 때까지 대기
+        var task = App.instance.GetMapManager().NextDayCoroutineAsync();
+        while (!task.GetAwaiter().IsCompleted)
+        {
+            yield return null;
+        }
     }
 
     IEnumerator ShowNextDate()

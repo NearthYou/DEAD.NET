@@ -27,7 +27,10 @@ public class ProductionStructure : StructureBase
         for (var index = 0; index < colleagues.Count; index++)
         {
             var tile = colleagues[index];
-            ((ProductionStructure)tile.Structure).AllowAccess();
+            if (tile.Structure is ProductionStructure productionStructure)
+            {
+                productionStructure.AllowAccess();
+            }
         }
 
         App.instance.GetMapManager().NormalStructureResearch(this);

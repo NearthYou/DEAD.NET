@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using Hexamap;
+using Cysharp.Threading.Tasks;
 
 public class ZombieManager : MonoBehaviour
 {
@@ -73,21 +74,15 @@ public class ZombieManager : MonoBehaviour
         zombiesList.Add(zombie);
     }
     
-    public IEnumerator HandleZombies()
+    public async UniTask HandleZombiesAsync()
     {
-        bool zombieActEnd = false;
-
         for (var index = 0; index < zombiesList.Count; index++)
         {
             var zombie = zombiesList[index];
             zombie.GetComponent<ZombieBase>().DetectionAndAct();
-
-            if (index == zombiesList.Count - 1)
-                zombieActEnd = true;
         }
 
-        yield return new WaitUntil(() => zombieActEnd);
-        yield return new WaitForSeconds(1f);
+        await UniTask.Delay(1000);
         CheckSumZombies();
     }
     

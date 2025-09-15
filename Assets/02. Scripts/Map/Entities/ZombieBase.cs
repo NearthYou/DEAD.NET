@@ -6,6 +6,7 @@ using Hexamap;
 using DG.Tweening;
 using TMPro;
 using Unity.VisualScripting;
+using Cysharp.Threading.Tasks;
 
 public class ZombieData
 {
@@ -207,14 +208,14 @@ public class ZombieBase : MonoBehaviour
         if (nearthDistrubtor != null)
         {
             //Debug.Log(gameObject.name + "가 교란기를 쫓아갑니다!");
-            StartCoroutine(MoveToAttack(nearthDistrubtor.currentTile));
+            MoveToAttackAsync(nearthDistrubtor.currentTile).Forget();
             return;
         }
 
         if (isChasingPlayer && !App.instance.GetMapManager().mapController.Player.GetIsClocking())
         {
             //Debug.Log(gameObject.name + "가 플레이어를 발견했습니다!");
-            StartCoroutine(MoveToAttack(App.instance.GetMapManager().mapController.Player.TileController.Model));
+            MoveToAttackAsync(App.instance.GetMapManager().mapController.Player.TileController.Model).Forget();
 
             // 플레이어 바라보기
             var updatePos = App.instance.GetMapManager().mapController.Player.transform.position;
@@ -226,12 +227,12 @@ public class ZombieBase : MonoBehaviour
             var randomInt = GetRandom();
             if (randomInt == 0)
             {
-                StartCoroutine(MoveToRandom());
+                MoveToRandomAsync().Forget();
             }
         }
     }
 
-    public IEnumerator MoveToAttack(Tile target, float time = 0.25f)
+    public async UniTask MoveToAttackAsync(Tile target, float time = 0.25f)
     {
         movePath = AStar.FindPath(curTile.Coords, target.Coords);
 
@@ -247,7 +248,7 @@ public class ZombieBase : MonoBehaviour
         {
             if (movePath.Count == 0)
             {
-                yield break;
+                return;
             }
 
             for (int i = 0; i < moveCost; i++)
@@ -258,7 +259,7 @@ public class ZombieBase : MonoBehaviour
 
                 gameObject.transform.DOMove(pointPos, time);
 
-                yield return new WaitForSeconds(time);
+                await UniTask.Delay((int)(time * 1000));
                 curTile = pointTile;
 
                 if (movePath.Count == 1)
@@ -272,7 +273,7 @@ public class ZombieBase : MonoBehaviour
         lastTile = curTile;
     }
 
-    public IEnumerator MoveToRandom(int num = 1, float time = 0.25f)
+    public async UniTask MoveToRandomAsync(int num = 1, float time = 0.25f)
     {
         var candidate = MapController.instance.GetTilesInRange(curTile, num);
         int rand = Random.Range(0, candidate.Count);
@@ -288,7 +289,8 @@ public class ZombieBase : MonoBehaviour
         var targetPos = ((GameObject)candidate[rand].GameEntity).transform.position;
         targetPos.y += 0.6f;
 
-        yield return gameObject.transform.DOMove(targetPos, time);
+        gameObject.transform.DOMove(targetPos, time);
+        await UniTask.Delay((int)(time * 1000));
 
         curTile = candidate[rand];
 

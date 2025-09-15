@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using DG.Tweening;
+using Cysharp.Threading.Tasks;
 
 public class BlinkEffect : MonoBehaviour
 {
@@ -22,19 +23,19 @@ public class BlinkEffect : MonoBehaviour
 
     private void OnEnable()
     {
-        StartCoroutine(ChoiceAnimation());
+        ChoiceAnimationAsync().Forget();
     }
 
-    public IEnumerator ChoiceAnimation()
+    public async UniTask ChoiceAnimationAsync()
     {
         if (isStop)
-            yield return null;
+            return;
 
         material.DOColor(Color.clear, playTime);
-        yield return delayTime;
+        await UniTask.Delay((int)(playTime * 1000));
         material.DOColor(Color.white, playTime);
-        yield return delayTime;
+        await UniTask.Delay((int)(playTime * 1000));
 
-        StartCoroutine(ChoiceAnimation());
+        ChoiceAnimationAsync().Forget();
     }
 }

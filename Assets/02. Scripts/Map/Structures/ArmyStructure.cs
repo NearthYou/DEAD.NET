@@ -31,7 +31,10 @@ public class ArmyStructure : StructureBase
         for (var index = 0; index < colleagues.Count; index++)
         {
             var tile = colleagues[index];
-            ((ArmyStructure)tile.Structure).AllowAccess();
+            if (tile.Structure is ArmyStructure armyStructure)
+            {
+                armyStructure.AllowAccess();
+            }
         }
 
         App.instance.GetMapManager().NormalStructureResearch(this);

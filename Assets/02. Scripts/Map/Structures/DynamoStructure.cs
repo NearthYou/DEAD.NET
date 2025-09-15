@@ -31,7 +31,10 @@ public class DynamoStructure : StructureBase
         for (var index = 0; index < colleagues.Count; index++)
         {
             var tile = colleagues[index];
-            ((DynamoStructure)tile.Structure).AllowAccess();
+            if (tile.Structure is DynamoStructure dynamoStructure)
+            {
+                dynamoStructure.AllowAccess();
+            }
         }
 
         App.instance.GetMapManager().NormalStructureResearch(this);

@@ -6,6 +6,7 @@ using Hexamap;
 using DG.Tweening;
 using FischlWorks_FogWar;
 using Yarn.Unity;
+using Cysharp.Threading.Tasks;
 using Random = UnityEngine.Random;
 
 public class Player : MonoBehaviour
@@ -72,7 +73,7 @@ public class Player : MonoBehaviour
         movePath = new List<Coords>();
         moveRange = maxMoveRange;
         clockBuffDuration = 0;
-        StartCoroutine(DelaySightGetInfo());
+        DelaySightGetInfoAsync().Forget();
     }
 
     public void InputDefaultData(int _moveRange, int _durability)
@@ -82,23 +83,23 @@ public class Player : MonoBehaviour
         durability = _durability;
     }
 
-    public IEnumerator ActionDecision(TileController targetTileController)
+    public async UniTask ActionDecisionAsync(TileController targetTileController)
     {
         if (JungleDebuff)
         {
             // 이동
-            yield return StartCoroutine(MoveToRandom());
+            await MoveToRandomAsync();
             
             isJungleDebuff = false;
         }
         else
         {
             // 공격
-            yield return StartCoroutine(MoveToTarget(targetTileController));
+            await MoveToTargetAsync(targetTileController);
         }
     }
     
-    public IEnumerator MoveToTarget(TileController targetTileController, float time = 0.4f)
+    public async UniTask MoveToTargetAsync(TileController targetTileController, float time = 0.4f)
     {
         Tile targetTile;
         Vector3 targetPos;
@@ -127,12 +128,12 @@ public class Player : MonoBehaviour
 
                 transform.DOMove(targetPos, time);
                 moveRange--;
-                yield return new WaitForSeconds(time);
+                await UniTask.Delay((int)(time * 1000));
             }
 
             lastTargetPos.y += 0.5f;
-            yield return transform.DOMove(lastTargetPos, time);
-            yield return new WaitForSeconds(time);
+            transform.DOMove(lastTargetPos, time);
+            await UniTask.Delay((int)(time * 1000));
         }
 
         movePath.Clear();
@@ -141,7 +142,7 @@ public class Player : MonoBehaviour
         UpdateCurrentTile(targetTileController);
     }
 
-    public IEnumerator MoveToRandom(int num = 1, float time = 0.25f)
+    public async UniTask MoveToRandomAsync(int num = 1, float time = 0.25f)
     {
         var candidate = MapController.instance.GetTilesInRange(currentTileContorller.Model, num);
 
@@ -166,7 +167,8 @@ public class Player : MonoBehaviour
         
         targetPos.y += 0.6f;
 
-        yield return gameObject.transform.DOMove(targetPos, time);
+        gameObject.transform.DOMove(targetPos, time);
+        await UniTask.Delay((int)(time * 1000));
 
         movePath.Clear();
         moveRange = 0;
@@ -179,10 +181,10 @@ public class Player : MonoBehaviour
     /// 플레이어가 서 있는 타일의 위치를 갱신할 때마다 그 타일의 정보를 넘겨주는 이벤트 함수
     /// </summary>
     /// <returns></returns>
-    IEnumerator DelaySightGetInfo()
+    async UniTask DelaySightGetInfoAsync()
     {
         // AdditiveScene 딜레이 
-        yield return new WaitUntil(() => PlayerSightUpdate != null);
+        await UniTask.WaitUntil(() => PlayerSightUpdate != null);
         PlayerSightUpdate?.Invoke();
     }
 
@@ -209,7 +211,7 @@ public class Player : MonoBehaviour
 
     public void StartFloatingAnimation()
     {
-        StartCoroutine(floating.FloatingAnimation());
+        floating.FloatingAnimationAsync().Forget();
     }
 
     public void AttackZombies(ZombieBase zombies)
