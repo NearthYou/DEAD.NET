@@ -3,10 +3,6 @@ using UnityEngine;
 using Hexamap;
 using Cysharp.Threading.Tasks;
 
-/// <summary>
-/// 타일 파티클 시스템의 LOD 관리를 담당하는 클래스
-/// 거리와 시야에 따라 파티클의 품질과 활성화 상태를 제어합니다.
-/// </summary>
 public class ParticleLODManager : MonoBehaviour
 {
     [Header("LOD Settings")]
@@ -54,7 +50,11 @@ public class ParticleLODManager : MonoBehaviour
     
     private float lastUpdateTime;
     private int currentUpdateIndex = 0;
-    private int particlesPerFrame = 5;
+    private int particlesPerFrame = 2;
+    
+    private HashSet<Tile> cachedSightTiles;
+    private float lastSightUpdateTime;
+    private float sightCacheInterval = 0.5f;
     
     private void Start()
     {
@@ -78,8 +78,12 @@ public class ParticleLODManager : MonoBehaviour
     {
         await UniTask.WaitUntil(() => mapController.LoadingComplete);
         
-        // 모든 타일에서 파티클 시스템 찾기
+        await UniTask.Delay(100);
+        
         var allTiles = mapController.GetAllTiles();
+                
+        int processedCount = 0;
+        int batchSize = 10;
         
         foreach (var tile in allTiles)
         {
@@ -87,13 +91,16 @@ public class ParticleLODManager : MonoBehaviour
             if (tileObject != null)
             {
                 RegisterTileParticles(tileObject);
+                processedCount++;
+                
+                if (processedCount % batchSize == 0)
+                {
+                    await UniTask.Yield();
+                }
             }
-        }
+        }        
     }
     
-    /// <summary>
-    /// 타일의 파티클 시스템을 등록합니다.
-    /// </summary>
     public void RegisterTileParticles(GameObject tileObject)
     {
         if (particleCache.ContainsKey(tileObject))
@@ -111,9 +118,6 @@ public class ParticleLODManager : MonoBehaviour
         }
     }
     
-    /// <summary>
-    /// 타일의 파티클 시스템을 제거합니다.
-    /// </summary>
     public void UnregisterTileParticles(GameObject tileObject)
     {
         if (particleCache.TryGetValue(tileObject, out ParticleInfo info))
@@ -128,7 +132,7 @@ public class ParticleLODManager : MonoBehaviour
         if (!enableParticleLOD || allParticles.Count == 0)
             return;
             
-        if (Time.time - lastUpdateTime < updateInterval)
+        if (Time.time - lastUpdateTime < updateInterval * 2)
             return;
             
         lastUpdateTime = Time.time;
@@ -186,18 +190,39 @@ public class ParticleLODManager : MonoBehaviour
         if (mapController == null || tileObject == null)
             return false;
             
-        var sightTiles = mapController.GetPlayerSightTiles();
+        UpdateSightCache();
         
-        if (sightTiles == null)
+        if (cachedSightTiles == null)
             return false;
         
-        foreach (var tile in sightTiles)
-        {
-            if (tile != null && tile.GameEntity != null && (GameObject)tile.GameEntity == tileObject)
-                return true;
-        }
+        var tileController = tileObject.GetComponent<TileController>();
+        if (tileController == null)
+            return false;
+            
+        return cachedSightTiles.Contains(tileController.Model);
+    }
+    
+    private void UpdateSightCache()
+    {
+        if (Time.time - lastSightUpdateTime < sightCacheInterval)
+            return;
+            
+        lastSightUpdateTime = Time.time;
         
-        return false;
+        var sightTiles = mapController.GetPlayerSightTilesForParticles();
+        
+        if (cachedSightTiles == null)
+            cachedSightTiles = new HashSet<Tile>();
+        else
+            cachedSightTiles.Clear();
+            
+        if (sightTiles != null)
+        {
+            foreach (var tile in sightTiles)
+            {
+                cachedSightTiles.Add(tile);
+            }
+        }
     }
     
     private ParticleLODLevel DetermineLODLevel(float distance, bool inSight)
@@ -232,15 +257,15 @@ public class ParticleLODManager : MonoBehaviour
                     break;
                     
                 case ParticleLODLevel.Low:
-                    SetParticleSystemSettings(particleSystem, true, 0.3f, 0.5f, 0.3f);
+                    SetParticleSystemSettings(particleSystem, true, 10f, 50f, 0.5f);
                     break;
                     
                 case ParticleLODLevel.Medium:
-                    SetParticleSystemSettings(particleSystem, true, 0.7f, 0.8f, 0.7f);
+                    SetParticleSystemSettings(particleSystem, true, 20f, 100f, 0.8f);
                     break;
                     
                 case ParticleLODLevel.High:
-                    SetParticleSystemSettings(particleSystem, true, 1.0f, 1.0f, 1.0f);
+                    SetParticleSystemSettings(particleSystem, true, 30f, 200f, 1.0f);
                     break;
             }
         }
@@ -251,7 +276,6 @@ public class ParticleLODManager : MonoBehaviour
         var emission = ps.emission;
         var main = ps.main;
         
-        // 파티클 시스템 활성화/비활성화
         if (enabled && !ps.isPlaying)
         {
             ps.Play();
@@ -261,9 +285,13 @@ public class ParticleLODManager : MonoBehaviour
             ps.Stop();
         }
         
-        emission.rateOverTime = emission.rateOverTime.constant * emissionRate;
+        // emissionRate를 직접 설정 (곱셈이 아닌 절대값)
+        var rateOverTime = emission.rateOverTime;
+        rateOverTime.constant = emissionRate;
+        emission.rateOverTime = rateOverTime;
         
-        main.maxParticles = Mathf.RoundToInt(main.maxParticles * maxParticles);
+        // maxParticles를 직접 설정 (곱셈이 아닌 절대값)
+        main.maxParticles = Mathf.RoundToInt(maxParticles);
         
         main.simulationSpeed = simulationSpeed;
     }
@@ -284,9 +312,47 @@ public class ParticleLODManager : MonoBehaviour
     /// </summary>
     public void ForceUpdateAllParticles()
     {
-        foreach (var info in allParticles)
+        // 동기 버전 - 최소한의 배치 처리만 적용
+        int batchSize = 50; // 한 번에 처리할 파티클 수
+        
+        for (int i = 0; i < allParticles.Count; i += batchSize)
         {
-            UpdateParticleLOD(info);
+            int endIndex = Mathf.Min(i + batchSize, allParticles.Count);
+            
+            for (int j = i; j < endIndex; j++)
+            {
+                if (allParticles[j] != null)
+                {
+                    UpdateParticleLOD(allParticles[j]);
+                }
+            }
+        }
+    }
+    
+    /// <summary>
+    /// 모든 파티클의 LOD를 비동기로 업데이트합니다.
+    /// </summary>
+    public async UniTask ForceUpdateAllParticlesAsync()
+    {
+        int batchSize = 20; // 한 번에 처리할 파티클 수
+        
+        for (int i = 0; i < allParticles.Count; i += batchSize)
+        {
+            int endIndex = Mathf.Min(i + batchSize, allParticles.Count);
+            
+            for (int j = i; j < endIndex; j++)
+            {
+                if (allParticles[j] != null)
+                {
+                    UpdateParticleLOD(allParticles[j]);
+                }
+            }
+            
+            // 프레임 분산을 위해 yield
+            if (i + batchSize < allParticles.Count)
+            {
+                await UniTask.Yield();
+            }
         }
     }
     

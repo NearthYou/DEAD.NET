@@ -78,14 +78,25 @@ public class MapController : Singleton<MapController>
     private Dictionary<GameObject, bool> _lastVisibilityState = new Dictionary<GameObject, bool>();
     private HashSet<GameObject> _visibleObjects = new HashSet<GameObject>();
     private HashSet<GameObject> _invisibleObjects = new HashSet<GameObject>();
+    
+    private List<StructureObject> _cachedStructureObjects;
+    private List<TileController> _cachedTileControllers;
+    private HashSet<Tile> _cachedVisibleTiles;
+    private HashSet<Tile> _cachedPlayerSightTiles;
+    private bool _playerSightCacheDirty = true;
+    
+    private List<GameObject> _tempShowList;
+    private List<GameObject> _tempHideList;
 
     private void Start()
     {
         App.instance.GetMapManager().GetAdditiveSceneObjectsCoroutine();
     }
 
-    public void GenerateMap()
+    public async UniTask GenerateMapAsync()
     {
+        InvalidateAllRenderingCache();
+        
         hexaMap.Destroy();
 
         var timeBefore = DateTime.Now;
@@ -101,17 +112,18 @@ public class MapController : Singleton<MapController>
         _fastNoise.SetNoiseType(FastNoise.NoiseType.Perlin);
         _fastNoise.SetSeed(hexaMap.Map.Seed);
 
-        foreach (Tile tile in hexaMap.Map.Tiles)
-        {
-            var noiseY = _fastNoise.GetValue(tile.Coords.X, tile.Coords.Y);
-            (tile.GameEntity as GameObject).transform.position += new Vector3(0, noiseY * mapSettings.noiseMultiplier, 0);
-        }
+        await ApplyNoiseToTilesAsync(hexaMap.Map.Tiles, _fastNoise);
 
         mapParentTransform.position = Vector3.forward * mapSettings.mapOffset;
 
         GenerateMapObjects();
 
         isLoadingComplete = true;
+    }
+    
+    public void GenerateMap()
+    {
+        GenerateMapAsync().Forget();
     }
 
     public void RegenerateMap()
@@ -513,7 +525,6 @@ public class MapController : Singleton<MapController>
             return selectTileNumber;
         }
 
-        // 플레이어와 겹치지 않는 랜덤 타일 뽑기.
         while (selectTileNumber.Count != choiceNum)
         {
             int randomInt = Random.Range(0, tiles.Count);
@@ -541,19 +552,76 @@ public class MapController : Singleton<MapController>
         sightTiles = GetTilesInRange(_targetTile, mapSettings.sightRange);
         sightTiles.Add(_targetTile);
 
+        _playerSightCacheDirty = true;
+        
+        OptimizeRenderingAsync().Forget();
+        
+        UpdateAllTileVisibilityAsync().Forget();
+    }
+    
+    private async UniTask OptimizeRenderingAsync()
+    {
         OptimizeStructureRendering();
+        await UniTask.Yield();
         
         OptimizeTileRendering();
+        await UniTask.Yield();
         
-        UpdateParticleLOD();
+        await UpdateParticleLODAsync();
+        await UniTask.Yield();
         
         CleanupVisibilityCache();
+    }
+    
+    private async UniTask UpdateAllTileVisibilityAsync()
+    {
+        if (Player?.TileController?.Model == null) return;
+        
+        var playerSightTiles = GetPlayerSightTiles();
+        var sightHashSet = new HashSet<Tile>(playerSightTiles);
+        
+        if (_cachedTileControllers == null)
+        {
+            var allTiles = GetAllTiles();
+            _cachedTileControllers = allTiles
+                .Select(x => ((GameObject)x.GameEntity).GetComponent<TileController>())
+                .Where(x => x != null)
+                .ToList();
+        }
+        
+        var batchSize = 50;
+        
+        for (int i = 0; i < _cachedTileControllers.Count; i += batchSize)
+        {
+            int endIndex = Mathf.Min(i + batchSize, _cachedTileControllers.Count);
+            
+            for (int j = i; j < endIndex; j++)
+            {
+                var tileController = _cachedTileControllers[j];
+                if (tileController != null)
+                {
+                    var tileBase = tileController.GetComponent<TileBase>();
+                    if (tileBase != null)
+                    {
+                        bool inSight = sightHashSet.Contains(tileController.Model);
+                        tileBase.UpdateVisibilityFromController(inSight);
+                    }
+                }
+            }
+            
+            if (i + batchSize < _cachedTileControllers.Count)
+                await UniTask.Yield();
+        }
     }
 
     private void OptimizeStructureRendering()
     {
-        List<StructureObject> structureObjects =
-            objectsTransform.GetComponentsInChildren<StructureObject>(true).ToList();
+        if (_cachedStructureObjects == null)
+        {
+            _cachedStructureObjects = objectsTransform.GetComponentsInChildren<StructureObject>(true).ToList();
+        }
+        
+        List<StructureObject> structureObjects = _cachedStructureObjects;
 
         for (int i = 0; i < structureObjects.Count; i++)
         {
@@ -581,27 +649,55 @@ public class MapController : Singleton<MapController>
 
     private void OptimizeTileRendering()
     {
-        var allTiles = GetAllTiles();
-        var visibleTiles = new HashSet<Tile>(sightTiles);
-        
-        var toShow = new List<GameObject>();
-        var toHide = new List<GameObject>();
-        
-        for (int i = 0; i < allTiles.Count; i++)
+        if (_cachedTileControllers == null)
         {
-            Tile item = allTiles[i];
-            GameObject tileObj = (GameObject)item.GameEntity;
+            var allTiles = GetAllTiles();
+            _cachedTileControllers = allTiles
+                .Select(x => ((GameObject)x.GameEntity).GetComponent<TileController>())
+                .Where(x => x != null)
+                .ToList();
+        }
+        
+        if (_cachedVisibleTiles == null)
+        {
+            _cachedVisibleTiles = new HashSet<Tile>();
+        }
+        else
+        {
+            _cachedVisibleTiles.Clear();
+        }
+        
+        foreach (var tile in sightTiles)
+        {
+            _cachedVisibleTiles.Add(tile);
+        }
+        
+        if (_tempShowList == null)
+            _tempShowList = new List<GameObject>();
+        else
+            _tempShowList.Clear();
             
-            bool shouldBeVisible = visibleTiles.Contains(item);
+        if (_tempHideList == null)
+            _tempHideList = new List<GameObject>();
+        else
+            _tempHideList.Clear();
+        
+        for (int i = 0; i < _cachedTileControllers.Count; i++)
+        {
+            TileController tileController = _cachedTileControllers[i];
+            if (tileController == null) continue;
+            
+            GameObject tileObj = tileController.gameObject;
+            bool shouldBeVisible = _cachedVisibleTiles.Contains(tileController.Model);
             
             if (_lastVisibilityState.TryGetValue(tileObj, out bool lastState))
             {
                 if (lastState != shouldBeVisible)
                 {
                     if (shouldBeVisible)
-                        toShow.Add(tileObj);
+                        _tempShowList.Add(tileObj);
                     else
-                        toHide.Add(tileObj);
+                        _tempHideList.Add(tileObj);
                     
                     _lastVisibilityState[tileObj] = shouldBeVisible;
                 }
@@ -609,23 +705,22 @@ public class MapController : Singleton<MapController>
             else
             {
                 if (shouldBeVisible)
-                    toShow.Add(tileObj);
+                    _tempShowList.Add(tileObj);
                 else
-                    toHide.Add(tileObj);
+                    _tempHideList.Add(tileObj);
                 
                 _lastVisibilityState[tileObj] = shouldBeVisible;
             }
         }
         
-        BatchSetVisibility(toShow, true);
-        BatchSetVisibility(toHide, false);
+        BatchSetVisibility(_tempShowList, true);
+        BatchSetVisibility(_tempHideList, false);
     }
     
     private void SetObjectVisibility(GameObject obj, bool visible)
     {
         if (obj == null) return;
         
-        // Renderer 컴포넌트 캐시
         if (!_rendererCache.TryGetValue(obj, out Renderer renderer))
         {
             renderer = obj.GetComponent<Renderer>();
@@ -635,10 +730,8 @@ public class MapController : Singleton<MapController>
         
         if (renderer != null)
         {
-            // Renderer 컴포넌트를 직접 제어
             renderer.enabled = visible;
             
-            // 자식 오브젝트들의 Renderer도 함께 제어
             Renderer[] childRenderers = obj.GetComponentsInChildren<Renderer>();
             foreach (var childRenderer in childRenderers)
             {
@@ -648,25 +741,19 @@ public class MapController : Singleton<MapController>
         }
         else
         {
-            // Renderer가 없는 경우에만 SetActive 사용
             obj.SetActive(visible);
         }
         
-        // 가시성 상태 추적
         if (visible)
             _visibleObjects.Add(obj);
         else
             _invisibleObjects.Add(obj);
     }
 
-    /// <summary>
-    /// 배치 처리를 통해 여러 오브젝트의 가시성을 한 번에 설정
-    /// </summary>
     private void BatchSetVisibility(List<GameObject> objects, bool visible)
     {
         if (objects.Count == 0) return;
         
-        // 렌더러별로 그룹화하여 배치 처리
         var rendererGroups = new Dictionary<Renderer, List<GameObject>>();
         
         foreach (var obj in objects)
@@ -686,13 +773,11 @@ public class MapController : Singleton<MapController>
             }
         }
         
-        // 배치 처리
         foreach (var group in rendererGroups)
         {
             Renderer renderer = group.Key;
             renderer.enabled = visible;
             
-            // 자식 렌더러들도 함께 처리
             Renderer[] childRenderers = renderer.GetComponentsInChildren<Renderer>();
             foreach (var childRenderer in childRenderers)
             {
@@ -701,7 +786,6 @@ public class MapController : Singleton<MapController>
             }
         }
         
-        // SetActive가 필요한 오브젝트들 처리
         foreach (var obj in objects)
         {
             if (!_rendererCache.ContainsKey(obj))
@@ -711,10 +795,6 @@ public class MapController : Singleton<MapController>
         }
     }
 
-    /// <summary>
-    /// 가시성 캐시를 정리하는 함수
-    /// 메모리 누수 방지
-    /// </summary>
     private void CleanupVisibilityCache()
     {
         var keysToRemove = new List<GameObject>();
@@ -744,9 +824,6 @@ public class MapController : Singleton<MapController>
         }
     }
 
-    /// <summary>
-    /// 렌더링 최적화 캐시를 완전히 초기화하는 함수
-    /// </summary>
     public void ClearRenderingCache()
     {
         _rendererCache.Clear();
@@ -755,26 +832,44 @@ public class MapController : Singleton<MapController>
         _invisibleObjects.Clear();
     }
     
-    /// <summary>
-    /// 파티클 LOD를 업데이트합니다.
-    /// </summary>
-    private void UpdateParticleLOD()
+    private async UniTask UpdateParticleLODAsync()
     {
         var mapManager = App.instance.GetMapManager();
         if (mapManager != null)
         {
-            mapManager.UpdateAllParticleLOD();
+            await mapManager.UpdateAllParticleLODAsync();
         }
     }
 
-    public void SightCheckInit()
+    public async void SightCheckInit()
     {
+        await UniTask.Delay(100);
         OcclusionCheck(GetTileFromCoords(new Coords(0, 0)));
     }
 
     public List<Tile> GetPlayerSightTiles()
     {
-        var list = GetTilesInRange(Player.TileController.Model, mapSettings.playerSightRange);
+        if (_playerSightCacheDirty || _cachedPlayerSightTiles == null)
+        {
+            if (_cachedPlayerSightTiles == null)
+                _cachedPlayerSightTiles = new HashSet<Tile>();
+            else
+                _cachedPlayerSightTiles.Clear();
+                
+            var tiles = GetTilesInRange(Player.TileController.Model, mapSettings.playerSightRange);
+            foreach (var tile in tiles)
+            {
+                _cachedPlayerSightTiles.Add(tile);
+            }
+            _playerSightCacheDirty = false;
+        }
+        
+        return _cachedPlayerSightTiles.ToList();
+    }
+    
+    public List<Tile> GetPlayerSightTilesForParticles()
+    {
+        var list = GetTilesInRange(Player.TileController.Model, mapSettings.playerSightRange + 3);
         return list;
     }
 
@@ -822,7 +917,7 @@ public class MapController : Singleton<MapController>
             arrow = Instantiate(arrowPrefab, _pos, Quaternion.identity);
         }
         
-        _pos.y += mapSettings.playerSpawnHeight; // 임시로 playerSpawnHeight 사용
+        _pos.y += mapSettings.playerSpawnHeight;
         arrow.transform.position = _pos;
         
         arrow.SetActive(true);
@@ -881,6 +976,8 @@ public class MapController : Singleton<MapController>
             structureManager.GenerateTower();
             structureManager.Generate3TileStructure(new Coords(0, 0));
             structureManager.Generate7TileStructure(new Coords(0, 0));
+            
+            InvalidateStructureCache();
         }
     }
 
@@ -941,7 +1038,7 @@ public class MapController : Singleton<MapController>
             structureManager.Initialize(this, objectsTransform, mapPrefab);
     }
 
-    private void RandomTileResource(float _percent)
+    private async void RandomTileResource(float _percent)
     {
         List<TileBase> tileBaseList = GetAllTiles()
             .Select(x => ((GameObject)x.GameEntity).GetComponent<TileBase>())
@@ -955,13 +1052,28 @@ public class MapController : Singleton<MapController>
             tileBaseList.RemoveAt(randNum);
         }
 
+        await SpawnResourcesInBatchesAsync(tileBaseList);
+
+        OcclusionCheck(Player.TileController.Model);
+    }
+    
+    private async UniTask SpawnResourcesInBatchesAsync(List<TileBase> tileBaseList)
+    {
+        int batchSize = 15;
+        int processedCount = 0;
+        
         for (int i = 0; i < tileBaseList.Count; i++)
         {
             TileBase tile = tileBaseList[i];
             tile.SpawnRandomResource();
+            
+            processedCount++;
+            
+            if (processedCount % batchSize == 0)
+            {
+                await UniTask.Yield();
+            }
         }
-
-        OcclusionCheck(Player.TileController.Model);
     }
 
     public List<Tile> GetAllTiles()
@@ -977,6 +1089,40 @@ public class MapController : Singleton<MapController>
     private void InvalidateTilesCache()
     {
         _tilesCacheDirty = true;
+    }
+    
+    private void InvalidateStructureCache()
+    {
+        _cachedStructureObjects = null;
+    }
+    
+    private void InvalidateAllRenderingCache()
+    {
+        _cachedStructureObjects = null;
+        _cachedTileControllers = null;
+        _cachedVisibleTiles = null;
+        _cachedPlayerSightTiles = null;
+        _tilesCacheDirty = true;
+        _playerSightCacheDirty = true;
+    }
+    
+    private async UniTask ApplyNoiseToTilesAsync(IReadOnlyList<Tile> tiles, FastNoise fastNoise)
+    {
+        int batchSize = 20;
+        int processedCount = 0;
+        
+        foreach (Tile tile in tiles)
+        {
+            var noiseY = fastNoise.GetValue(tile.Coords.X, tile.Coords.Y);
+            (tile.GameEntity as GameObject).transform.position += new Vector3(0, noiseY * mapSettings.noiseMultiplier, 0);
+            
+            processedCount++;
+            
+            if (processedCount % batchSize == 0)
+            {
+                await UniTask.Yield();
+            }
+        }
     }
 
     private void SpawnPlayer()
@@ -1039,9 +1185,10 @@ public class MapController : Singleton<MapController>
 
     private void HandleEndOfDay()
     {
-        // 이동 거리 충전
         Player.SetHealth(true);
         Player.TileEffectCheck();
+        
+        _playerSightCacheDirty = true;
         OcclusionCheck(Player.TileController.Model);
     }
 
@@ -1102,10 +1249,6 @@ public class MapController : Singleton<MapController>
         return null;
     }
 
-    /// <summary>
-    /// 같은 그룹 타일이 모여있는 곳에 마우스를 올리면 그룹 전체를 선택을 하게 해주는 함수. 현재 사용 중이지 않다.
-    /// </summary>
-    /// <param name="tile"></param>
     private void SelectMetaLandform(TileController tile)
     {
         // Select metalandform of a tile
@@ -1128,7 +1271,6 @@ public class MapController : Singleton<MapController>
 
     private bool ConditionalBranch(EObjectSpawnType type, Tile tile)
     {
-        // landform rocks도 거르면 건물 잔해도 거를 수 있음
         if (LandformCheck(TileToTileController(tile)) == false)
         {
             return false;

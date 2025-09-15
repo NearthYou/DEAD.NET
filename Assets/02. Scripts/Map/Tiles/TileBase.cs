@@ -269,13 +269,14 @@ public class TileBase : MonoBehaviour
 
     void CheckPlayerTIle()
     {
-        if (App.instance.GetMapManager().mapController.GetPlayerSightTiles().Contains(tile))
+    }
+    
+    public void UpdateVisibilityFromController(bool inPlayerSight)
+    {
+        if (this.inPlayerSight != inPlayerSight)
         {
-            ResourceUpdate(true);
-        }
-        else
-        {
-            ResourceUpdate(false);
+            this.inPlayerSight = inPlayerSight;
+            ResourceUpdate(inPlayerSight);
         }
     }
 

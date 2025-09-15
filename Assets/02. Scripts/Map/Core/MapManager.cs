@@ -53,21 +53,36 @@ public class MapManager : ManagementBase
     private async UniTask GetAdditiveSceneObjectsAsync()
     {
         await UniTask.WaitForEndOfFrame(this);
+        await UniTask.Delay(100);
+        
         mainCamera = GameObject.FindGameObjectWithTag("MainCamera").GetComponent<Camera>();
+        await UniTask.Yield();
+        
         mapUIController = GameObject.FindGameObjectWithTag("MapUi").GetComponent<MapUiController>();
+        await UniTask.Yield();
+        
         mapController = GameObject.FindGameObjectWithTag("MapController").GetComponent<MapController>();
+        await UniTask.Yield();
 
         mapController.InputMapData(mapData);
-
         await UniTask.WaitUntil(() => mapController != null);
-        mapController.GenerateMap();
+        await UniTask.Delay(50);
+        
+        await mapController.GenerateMapAsync();
+        await UniTask.Delay(200);
+        
         mapCineCamera = GameObject.FindGameObjectWithTag("MapCamera").GetComponent<MapCamera>();
-
+        await UniTask.Delay(100);
+        
         AllowMouseEvent(true);
         resourceManager = GameObject.FindGameObjectWithTag("Resource").GetComponent<ResourceManager>();
+        await UniTask.Delay(100);
+        
         await mapCineCamera.GetMapInfoAsync();
+        await UniTask.Delay(100);
 
         mapController.SightCheckInit();
+        await UniTask.Delay(200);
         
         InitializeParticleLODManager();
     }
@@ -417,8 +432,14 @@ public class MapManager : ManagementBase
     // 카메라 정중앙 좌표를 반환하는 함수
     public void GetCameraCenterTile()
     {
-        Vector3 centerPos = new Vector3(Camera.main.pixelWidth / 2, Camera.main.pixelHeight / 2);
-        Ray ray = Camera.main.ScreenPointToRay(centerPos);
+        // 메인 카메라 캐시 사용
+        if (mainCamera == null)
+            mainCamera = Camera.main;
+            
+        if (mainCamera == null) return;
+        
+        Vector3 centerPos = new Vector3(mainCamera.pixelWidth / 2, mainCamera.pixelHeight / 2);
+        Ray ray = mainCamera.ScreenPointToRay(centerPos);
 
         int onlyLayerMaskTile = 1 << LayerMask.NameToLayer("Tile");
 
@@ -434,8 +455,21 @@ public class MapManager : ManagementBase
             if (cameraTarget != target)
             {
                 cameraTarget = target;
-                mapController.OcclusionCheck(cameraTarget.Model);
+                // OcclusionCheck를 지연시켜 CPU 스파이크 방지
+                StartCoroutine(DelayedOcclusionCheck());
             }
+        }
+    }
+    
+    /// <summary>
+    /// OcclusionCheck를 지연시켜 실행
+    /// </summary>
+    private IEnumerator DelayedOcclusionCheck()
+    {
+        yield return null; // 한 프레임 대기
+        if (cameraTarget != null)
+        {
+            mapController.OcclusionCheck(cameraTarget.Model);
         }
     }
     
@@ -519,6 +553,17 @@ public class MapManager : ManagementBase
         if (particleLODManager != null)
         {
             particleLODManager.ForceUpdateAllParticles();
+        }
+    }
+    
+    /// <summary>
+    /// 모든 파티클의 LOD를 비동기로 업데이트합니다.
+    /// </summary>
+    public async UniTask UpdateAllParticleLODAsync()
+    {
+        if (particleLODManager != null)
+        {
+            await particleLODManager.ForceUpdateAllParticlesAsync();
         }
     }
     

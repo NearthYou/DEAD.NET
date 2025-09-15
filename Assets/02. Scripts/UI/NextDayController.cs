@@ -218,9 +218,28 @@ public class NextDayController : MonoBehaviour
             .OnComplete(() =>
                 {
                     blackPanel.gameObject.SetActive(false);
-                    App.instance.GetMapManager().GetCameraCenterTile();
-                    App.instance.GetMapManager().InvocationExplorers();
+                    
+                    // 맵 진입 후 무거운 작업들을 지연시켜 CPU 스파이크 방지
+                    StartCoroutine(DelayedMapInitialization());
                 }
             );
+    }
+    
+    /// <summary>
+    /// 맵 진입 후 무거운 작업들을 지연시켜 실행
+    /// </summary>
+    private IEnumerator DelayedMapInitialization()
+    {
+        // 첫 번째 프레임 대기
+        yield return null;
+        
+        // 카메라 중심 타일 계산
+        App.instance.GetMapManager().GetCameraCenterTile();
+        
+        // 두 번째 프레임 대기
+        yield return null;
+        
+        // 탐색기 호출 (가장 무거운 작업)
+        App.instance.GetMapManager().InvocationExplorers();
     }
 }

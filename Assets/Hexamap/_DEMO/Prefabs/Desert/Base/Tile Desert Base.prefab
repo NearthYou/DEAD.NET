@@ -285,8 +285,8 @@ ParticleSystem:
     startSize:
       serializedVersion: 2
       minMaxState: 3
-      scalar: 6
-      minScalar: 3
+      scalar: 1
+      minScalar: 1
       maxCurve:
         serializedVersion: 2
         m_Curve:
@@ -4981,6 +4981,8 @@ MonoBehaviour:
   - {fileID: 7907519394459638926}
   - {fileID: 218449280273527749}
   - {fileID: 2114503482201930953}
+  tileParticles: []
+  hasEnvironmentalEffect: 0
 --- !u!212 &6644434980707405186 stripped
 SpriteRenderer:
   m_CorrespondingSourceObject: {fileID: 3556380363377903167, guid: 2a4d84312a74d1f46b8139342606115b, type: 3}

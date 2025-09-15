@@ -76,10 +76,25 @@ public class ZombieManager : MonoBehaviour
     
     public async UniTask HandleZombiesAsync()
     {
-        for (var index = 0; index < zombiesList.Count; index++)
+        int batchSize = 10;
+        
+        for (int i = 0; i < zombiesList.Count; i += batchSize)
         {
-            var zombie = zombiesList[index];
-            zombie.GetComponent<ZombieBase>().DetectionAndAct();
+            int endIndex = Mathf.Min(i + batchSize, zombiesList.Count);
+            
+            for (int j = i; j < endIndex; j++)
+            {
+                var zombie = zombiesList[j];
+                if (zombie != null)
+                {
+                    zombie.GetComponent<ZombieBase>().DetectionAndAct();
+                }
+            }
+            
+                if (i + batchSize < zombiesList.Count)
+                {
+                    await UniTask.Yield();
+                }
         }
 
         await UniTask.Delay(1000);
@@ -88,15 +103,27 @@ public class ZombieManager : MonoBehaviour
     
     public void CheckSumZombies()
     {
-        List<ZombieBase> zombieBases = zombiesList.Select(x => x.GetComponent<ZombieBase>()).ToList();
+        var validZombies = new List<ZombieBase>();
+        for (int i = 0; i < zombiesList.Count; i++)
+        {
+            if (zombiesList[i] != null)
+            {
+                var zombieBase = zombiesList[i].GetComponent<ZombieBase>();
+                if (zombieBase != null)
+                {
+                    validZombies.Add(zombieBase);
+                }
+            }
+        }
+        
         List<ZombieBase> removeZombies = new List<ZombieBase>();
 
-        for (int i = 0; i < zombieBases.Count; i++)
+        for (int i = 0; i < validZombies.Count; i++)
         {
-            for (int j = i + 1; j < zombieBases.Count; j++)
+            for (int j = i + 1; j < validZombies.Count; j++)
             {
-                var firstZombies = zombieBases[i];
-                var secondZombies = zombieBases[j];
+                var firstZombies = validZombies[i];
+                var secondZombies = validZombies[j];
 
                 if (firstZombies.zombieData.count == 0 || secondZombies.zombieData.count == 0)
                     continue;
@@ -109,7 +136,7 @@ public class ZombieManager : MonoBehaviour
             }
         }
 
-        for (int i = 0; i < removeZombies.Count(); i++)
+            for (int i = removeZombies.Count - 1; i >= 0; i--)
         {
             var item = removeZombies[i];
             zombiesList.Remove(item.gameObject);

@@ -185,13 +185,11 @@ public class Player : MonoBehaviour
     {
         // AdditiveScene 딜레이 
         await UniTask.WaitUntil(() => PlayerSightUpdate != null);
-        PlayerSightUpdate?.Invoke();
     }
 
     public void UpdateCurrentTile(TileController tileController)
     {
         currentTileContorller = tileController;
-        PlayerSightUpdate?.Invoke();
     }
 
     public void UpdateMovePath(List<Coords> path)
