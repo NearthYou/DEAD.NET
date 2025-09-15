@@ -5,9 +5,10 @@ using Cinemachine;
 
 public class MapCamera : MonoBehaviour
 {
-    GameObject player;
-    GameObject noteUi;
-    GameObject mapUi;
+    [Header("References")]
+    private GameObject player;
+    private GameObject noteUi;
+    private GameObject mapUi;
     public CinemachineVirtualCamera mapCamera;
 
     public IEnumerator GetMapInfo()
@@ -21,7 +22,6 @@ public class MapCamera : MonoBehaviour
 
     public void SetPrioryty(bool isOn)
     {
-        // 230726 JHJ 임시로 카메라 priority 수정 향후 수정 필요
         if (isOn)
         {
             mapCamera.Priority = 11;

@@ -14,16 +14,13 @@ public class JungleTile : TileBase, ITileLandformEffect
     {
         if (RandomPercent.GetRandom(30))
         {
-            // 랜덤 이동
             UIManager.instance.GetPageController().SetResultPage("LOOSE_WAY", false);
-
             _player.JungleDebuffOn();
         }
 
         if (RandomPercent.GetRandom(10))
         {
             UIManager.instance.GetPageController().SetResultPage("SWAMP", false);
-            
             _player.SetHealth(false);
         }
     }

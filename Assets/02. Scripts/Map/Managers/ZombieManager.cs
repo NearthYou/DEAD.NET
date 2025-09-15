@@ -6,9 +6,10 @@ using Hexamap;
 
 public class ZombieManager : MonoBehaviour
 {
-    [Header("좀비 설정")] [Space(5f)] [SerializeField]
-    private float zombieSpawnHeight = 0.6f;
+    [Header("Settings")]
+    [SerializeField] private float zombieSpawnHeight = 0.6f;
     
+    [Header("References")]
     [SerializeField] private Transform zombiesTransform;
     [SerializeField] private MapPrefabSO mapPrefab;
     

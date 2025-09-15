@@ -6,12 +6,13 @@ using System.Linq;
 
 public class ResourceManager : MonoBehaviour
 {
-    [SerializeField] int collectiveAbility;
-    [SerializeField] ItemSO itemSO;
+    [Header("Settings")]
+    [SerializeField] private int collectiveAbility;
+    [SerializeField] private ItemSO itemSO;
 
     private List<Resource> owendResources;
     private List<Resource> lastResources;
-    bool isGetResource;
+    private bool isGetResource;
 
     public bool IsGetResource
     {
@@ -19,7 +20,7 @@ public class ResourceManager : MonoBehaviour
         set { isGetResource = value; }
     }
 
-    void Start()
+    private void Start()
     {
         owendResources = new List<Resource>();
         lastResources = new List<Resource>();
@@ -47,7 +48,6 @@ public class ResourceManager : MonoBehaviour
 
                 var item = itemSO.items.ToList().Find(x => x == resource.ItemBase);
 
-                //Debug.LogFormat("{0} 자원 {1}개 획득", item.data.Korean, lastResources[i].ItemCount);
                 isGetResource = true;
             }
             else

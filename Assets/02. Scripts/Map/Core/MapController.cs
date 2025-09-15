@@ -26,22 +26,21 @@ public struct MapSettings
 
 public class MapController : Singleton<MapController>
 {
-    // SerializeField 변수들
-    [Header("컴포넌트")] [Space(5f)] 
+    [Header("Components")]
     [SerializeField] private HexamapController hexaMap;
     [SerializeField] private csFogWar fogOfWar;
 
-    [Header("트랜스폼")] [Space(5f)] 
+    [Header("Transforms")]
     [SerializeField] private Transform zombiesTransform;
     [SerializeField] private Transform mapTransform;
     [SerializeField] private Transform mapParentTransform;
     [SerializeField] private Transform objectsTransform;
     [SerializeField] private GameObject arrowPrefab;
 
-    [Header("프리팹")] [Space(5f)] 
+    [Header("Prefabs")]
     [SerializeField] private MapPrefabSO mapPrefab;
 
-    [Header("설정")] [Space(5f)] 
+    [Header("Settings")]
     [SerializeField] private MapSettings mapSettings = new MapSettings
     {
         playerSpawnHeight = 0.7f,
@@ -54,17 +53,15 @@ public class MapController : Singleton<MapController>
         playerSightRange = 2
     };
 
-    [Header("매니저들")] [Space(5f)] 
+    [Header("Managers")]
     [SerializeField] private ZombieManager zombieManager;
     [SerializeField] private DroneManager droneManager;
     [SerializeField] private StructureManager structureManager;
 
-    // Public 변수들
     public Player Player { get; private set; }
     public bool LoadingComplete => isLoadingComplete;
     public TileController TargetPointTile => targetTileController;
 
-    // Private 변수들
     private List<TileController> selectedTiles = new List<TileController>();
     private List<TileController> droneSelectedTiles = new List<TileController>();
     private List<TileController> pathTiles = new List<TileController>();
@@ -76,7 +73,6 @@ public class MapController : Singleton<MapController>
     private bool _tilesCacheDirty = true;
     private GameObject arrow;
 
-    // 렌더링 최적화를 위한 캐시 변수들
     private Dictionary<GameObject, Renderer> _rendererCache = new Dictionary<GameObject, Renderer>();
     private Dictionary<GameObject, bool> _lastVisibilityState = new Dictionary<GameObject, bool>();
     private HashSet<GameObject> _visibleObjects = new HashSet<GameObject>();
@@ -544,13 +540,12 @@ public class MapController : Singleton<MapController>
         sightTiles = GetTilesInRange(_targetTile, mapSettings.sightRange);
         sightTiles.Add(_targetTile);
 
-        // 구조물 렌더링 최적화
         OptimizeStructureRendering();
         
-        // 타일 렌더링 최적화
         OptimizeTileRendering();
         
-        // 캐시 정리
+        UpdateParticleLOD();
+        
         CleanupVisibilityCache();
     }
 
@@ -566,7 +561,6 @@ public class MapController : Singleton<MapController>
             
             bool shouldBeVisible = sightTiles.Contains(item.CurTile);
             
-            // 캐시된 상태와 다를 때만 렌더링 상태 변경
             if (_lastVisibilityState.TryGetValue(obj, out bool lastState))
             {
                 if (lastState != shouldBeVisible)
@@ -577,7 +571,6 @@ public class MapController : Singleton<MapController>
             }
             else
             {
-                // 첫 번째 실행 시 캐시 초기화
                 SetObjectVisibility(obj, shouldBeVisible);
                 _lastVisibilityState[obj] = shouldBeVisible;
             }
@@ -590,7 +583,6 @@ public class MapController : Singleton<MapController>
         var allTiles = GetAllTiles();
         var visibleTiles = new HashSet<Tile>(sightTiles);
         
-        // 배치 처리를 위한 리스트
         var toShow = new List<GameObject>();
         var toHide = new List<GameObject>();
         
@@ -624,7 +616,6 @@ public class MapController : Singleton<MapController>
             }
         }
         
-        // 배치 처리
         BatchSetVisibility(toShow, true);
         BatchSetVisibility(toHide, false);
     }
@@ -725,7 +716,6 @@ public class MapController : Singleton<MapController>
     /// </summary>
     private void CleanupVisibilityCache()
     {
-        // 파괴된 오브젝트들 제거
         var keysToRemove = new List<GameObject>();
         
         foreach (var kvp in _lastVisibilityState)
@@ -742,7 +732,6 @@ public class MapController : Singleton<MapController>
             _invisibleObjects.Remove(key);
         }
         
-        // 캐시 크기 제한 (메모리 사용량 제어)
         if (_lastVisibilityState.Count > 1000)
         {
             var oldestKeys = _lastVisibilityState.Keys.Take(100).ToList();
@@ -763,6 +752,18 @@ public class MapController : Singleton<MapController>
         _lastVisibilityState.Clear();
         _visibleObjects.Clear();
         _invisibleObjects.Clear();
+    }
+    
+    /// <summary>
+    /// 파티클 LOD를 업데이트합니다.
+    /// </summary>
+    private void UpdateParticleLOD()
+    {
+        var mapManager = App.instance.GetMapManager();
+        if (mapManager != null)
+        {
+            mapManager.UpdateAllParticleLOD();
+        }
     }
 
     public void SightCheckInit()

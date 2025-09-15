@@ -7,8 +7,8 @@ using DG.Tweening;
 
 public class DroneManager : MonoBehaviour
 {
-    [Header("드론 설정")] [Space(5f)] [SerializeField]
-    private Transform mapTransform;
+    [Header("References")]
+    [SerializeField] private Transform mapTransform;
     [SerializeField] private MapPrefabSO mapPrefab;
     
     private List<GameObject> distrubtors = new List<GameObject>();

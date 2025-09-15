@@ -5,10 +5,11 @@ using UnityEngine.UI;
 
 public class MapUiController : ControllerBase
 {
-    [SerializeField] GameObject disturbtorButton;
-    [SerializeField] GameObject explorerButton;
-    [SerializeField] TargetPointUI targetPoint;
-    [SerializeField] TileInfoPanel tileInfoPanel;
+    [Header("UI Components")]
+    [SerializeField] private GameObject disturbtorButton;
+    [SerializeField] private GameObject explorerButton;
+    [SerializeField] private TargetPointUI targetPoint;
+    [SerializeField] private TileInfoPanel tileInfoPanel;
 
     private void Start()
     {

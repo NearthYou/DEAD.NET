@@ -16,7 +16,7 @@ public class DesertTile : TileBase, ITileLandformEffect
 
         if (RandomPercent.GetRandom(10))
         {
-            UIManager.instance.GetPageController().SetResultPage("DESERT_STORM",false);
+            UIManager.instance.GetPageController().SetResultPage("DESERT_STORM", false);
             _player.SetHealth(false);
         }
     }

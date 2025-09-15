@@ -1,6 +1,8 @@
 ﻿public class Resource
 {
     private string itemCode;
+    private int itemCount;
+    private ItemBase itemBase;
 
     public string ItemCode
     {
@@ -8,21 +10,17 @@
         set => itemCode = value;
     }
 
-    private int itemCount;
-
     public int ItemCount
     {
         get => itemCount;
         set
         {
-            if(value < 0)
+            if (value < 0)
                 itemCount = 0;
             else
                 itemCount = value;
         }
     }
-
-    private ItemBase itemBase;
 
     public ItemBase ItemBase
     {

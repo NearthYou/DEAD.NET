@@ -6,16 +6,17 @@ using Hexamap;
 
 public class Explorer : MonoBehaviour
 {
-    float lifeTime;
+    [Header("State")]
+    private float lifeTime;
     public Tile curTile;
     public Tile targetTile;
     private bool goToMap;
     private bool isIdle;
-    List<Coords> movePath;
+    private List<Coords> movePath;
     private int fogRevealerIndex = -1;
 
-    WaitForSeconds delay05 = new WaitForSeconds(0.5f);
-    WaitForSeconds delay1 = new WaitForSeconds(1.5f);
+    private WaitForSeconds delay05 = new WaitForSeconds(0.5f);
+    private WaitForSeconds delay1 = new WaitForSeconds(1.5f);
 
     public void Set(Tile tile)
     {

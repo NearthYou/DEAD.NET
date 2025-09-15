@@ -10,32 +10,33 @@ using Random = System.Random;
 
 public class MapManager : ManagementBase
 {
+    [Header("Components")]
     public MapUiController mapUIController;
     public MapController mapController;
     public ResourceManager resourceManager;
-    public bool mouseIntreractable;
-
-    [SerializeField] ETileMouseState mouseState;
-
-    [Header("밸런스 테스트 용")] [Space(5f)] [SerializeField]
-    MapData mapData;
+    public ParticleLODManager particleLODManager;
     
-    Camera mainCamera;
-    MapCamera mapCineCamera;
-    TileController curTileController;
-    StructureBase curStructure;
-
-    bool canPlayerMove;
-    bool isDronePrepared;
-    bool isDisturbtorPrepared;
-    bool isCameraMove;
-    bool isTundraTile;
-
-    TileBase structureTileBase;
-
+    [Header("Settings")]
+    [SerializeField] private ETileMouseState mouseState;
+    [SerializeField] private MapData mapData;
+    
+    [Header("State")]
+    public bool mouseIntreractable;
+    
+    private Camera mainCamera;
+    private MapCamera mapCineCamera;
+    private TileController curTileController;
+    private StructureBase curStructure;
     private TileController cameraTarget;
+    private TileBase structureTileBase;
+    
+    private bool canPlayerMove;
+    private bool isDronePrepared;
+    private bool isDisturbtorPrepared;
+    private bool isCameraMove;
+    private bool isTundraTile;
 
-    void Update()
+    private void Update()
     {
         SetETileMoveState();
 
@@ -46,14 +47,9 @@ public class MapManager : ManagementBase
 
             MouseOverEvents();
         }
-        
-        //if(Input.GetKeyDown(KeyCode.Z))
-            //UIManager.instance.GetInventoryController().AddItemByItemCode("ITEM_FINDOR");
-        //if(Input.GetKeyDown(KeyCode.X))
-            //UIManager.instance.GetInventoryController().AddItemByItemCode("ITEM_DISTURBE");
     }
 
-    IEnumerator GetAdditiveSceneObjects()
+    private IEnumerator GetAdditiveSceneObjects()
     {
         yield return new WaitForEndOfFrame();
         mainCamera = GameObject.FindGameObjectWithTag("MainCamera").GetComponent<Camera>();
@@ -71,6 +67,8 @@ public class MapManager : ManagementBase
         StartCoroutine(mapCineCamera.GetMapInfo());
 
         mapController.SightCheckInit();
+        
+        InitializeParticleLODManager();
     }
 
     public void GetAdditiveSceneObjectsCoroutine()
@@ -78,7 +76,7 @@ public class MapManager : ManagementBase
         StartCoroutine(GetAdditiveSceneObjects());
     }
 
-    void MouseOverEvents()
+    private void MouseOverEvents()
     {
         if (EventSystem.current.IsPointerOverGameObject())
         {
@@ -142,7 +140,7 @@ public class MapManager : ManagementBase
         MouseClickEvents();
     }
 
-    void MouseClickEvents()
+    private void MouseClickEvents()
     {
         RaycastHit hit;
         Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
@@ -226,21 +224,16 @@ public class MapManager : ManagementBase
         {
             isCameraMove = false;
         }
-        
-        
     }
 
-    void SetETileMoveState()
+    private void SetETileMoveState()
     {
         if (!mouseIntreractable)
             mouseState = ETileMouseState.Nothing;
-
         else if (!canPlayerMove && !isDronePrepared)
             mouseState = ETileMouseState.CanClick;
-
         else if (canPlayerMove)
             mouseState = ETileMouseState.CanPlayerMove;
-
         else if (isDronePrepared)
             mouseState = ETileMouseState.DronePrepared;
     }
@@ -491,5 +484,62 @@ public class MapManager : ManagementBase
     public void InvocationExplorers()
     {
         mapController.InvocationExplorers();
+    }
+    
+    /// <summary>
+    /// 파티클 LOD 매니저를 초기화합니다.
+    /// </summary>
+    private void InitializeParticleLODManager()
+    {
+        if (particleLODManager == null)
+        {
+            GameObject lodManagerObject = new GameObject("ParticleLODManager");
+            lodManagerObject.transform.SetParent(transform);
+            particleLODManager = lodManagerObject.AddComponent<ParticleLODManager>();
+        }
+    }
+    
+    /// <summary>
+    /// 특정 타일의 파티클을 강제로 업데이트합니다.
+    /// </summary>
+    public void UpdateTileParticles(GameObject tileObject)
+    {
+        if (particleLODManager != null)
+        {
+            particleLODManager.ForceUpdateTileParticles(tileObject);
+        }
+    }
+    
+    /// <summary>
+    /// 모든 파티클의 LOD를 즉시 업데이트합니다.
+    /// </summary>
+    public void UpdateAllParticleLOD()
+    {
+        if (particleLODManager != null)
+        {
+            particleLODManager.ForceUpdateAllParticles();
+        }
+    }
+    
+    /// <summary>
+    /// 파티클 LOD 설정을 변경합니다.
+    /// </summary>
+    public void SetParticleLODSettings(float highDistance, float mediumDistance, float lowDistance)
+    {
+        if (particleLODManager != null)
+        {
+            particleLODManager.SetLODSettings(highDistance, mediumDistance, lowDistance);
+        }
+    }
+    
+    /// <summary>
+    /// 파티클 LOD 활성화 상태를 변경합니다.
+    /// </summary>
+    public void SetParticleLODEnabled(bool enabled)
+    {
+        if (particleLODManager != null)
+        {
+            particleLODManager.SetParticleLODEnabled(enabled);
+        }
     }
 }

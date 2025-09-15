@@ -20,24 +20,27 @@ public class ZombieData
 [SelectionBase]
 public class ZombieBase : MonoBehaviour
 {
-    [SerializeField] GameObject[] zombieModels;
+    [Header("Models")]
+    [SerializeField] private GameObject[] zombieModels;
+    
+    [Header("Data")]
     public ZombieData zombieData = new ZombieData();
+    
+    [Header("State")]
     public Distrubtor nearthDistrubtor;
     public Tile curTile;
     public Tile lastTile;
     public Tile targetTile;
     public bool isChasingPlayer;
+    
     private bool noneTileBuff;
-
     private int lastZombieCount;
-
-    List<Coords> movePath;
-    int remainStunTime;
-    int moveCost = 1;
-    int dectectionRange = 2;
-    int debuffCoolTime = 0;
-
-    private Vector3 initScale = new Vector3(0,0,0);
+    private List<Coords> movePath;
+    private int remainStunTime;
+    private int moveCost = 1;
+    private int dectectionRange = 2;
+    private int debuffCoolTime = 0;
+    private Vector3 initScale = new Vector3(0, 0, 0);
 
     public void Init(Tile tile)
     {

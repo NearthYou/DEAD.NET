@@ -5,18 +5,19 @@ using DG.Tweening;
 
 public class BlinkEffect : MonoBehaviour
 {
-    Sequence sequence;
-    MeshRenderer mesh;
-    Material material;
-    [SerializeField] float playTime = 0.75f;
-    WaitForSeconds delayTime = new WaitForSeconds(0.75f);
+    [Header("Settings")]
+    [SerializeField] private float playTime = 0.75f;
     public bool isStop;
+    
+    private Sequence sequence;
+    private MeshRenderer mesh;
+    private Material material;
+    private WaitForSeconds delayTime = new WaitForSeconds(0.75f);
 
     private void Awake()
     {
         mesh = GetComponent<MeshRenderer>();
         material = mesh.material;
-        Renderer renderer = mesh;
     }
 
     private void OnEnable()
@@ -26,7 +27,7 @@ public class BlinkEffect : MonoBehaviour
 
     public IEnumerator ChoiceAnimation()
     {
-        if(isStop)
+        if (isStop)
             yield return null;
 
         material.DOColor(Color.clear, playTime);

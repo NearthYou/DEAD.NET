@@ -6,8 +6,8 @@ using Hexamap;
 
 public class StructureManager : MonoBehaviour
 {
-    [Header("구조물 설정")] [Space(5f)] [SerializeField]
-    private Transform objectsTransform;
+    [Header("References")]
+    [SerializeField] private Transform objectsTransform;
     [SerializeField] private MapPrefabSO mapPrefab;
     
     private MapController mapController;

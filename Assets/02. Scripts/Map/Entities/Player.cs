@@ -10,13 +10,33 @@ using Random = UnityEngine.Random;
 
 public class Player : MonoBehaviour
 {
-    [SerializeField] FloatingEffect floating;
+    [Header("Components")]
+    [SerializeField] private FloatingEffect floating;
+    
+    [Header("Settings")]
+    private int maxMoveRange = 1;
+    private int durability;
+    private int moveRange;
+    private int temporaryRange;
+    private int temporaryDurability;
+    
+    [Header("State")]
+    private List<Coords> movePath;
+    private TileController currentTileContorller;
+    private bool isDead;
+    private bool isClockingCheck;
+    private bool isJungleDebuff;
+    private int moveBuffDuration;
+    private int durabilityBuffDuration;
+    private int clockBuffDuration;
+    
+    [Header("Materials")]
+    [SerializeField] private Renderer rend;
+    [SerializeField] private Material cloakingMaterial;
+    [SerializeField] private Material normalMaterial;
+
     public static Action PlayerSightUpdate;
-
-    int maxMoveRange = 1;
-
-    int durability;
-
+    
     public int Durability
     {
         get => durability;
@@ -27,19 +47,11 @@ public class Player : MonoBehaviour
         }
     }
 
-    int moveRange;
-
     public int MoveRange
     {
         get => moveRange;
         set => moveRange = value;
     }
-
-    private int temporaryRange;
-    
-    private int temporaryDurability;
-
-    List<Coords> movePath;
 
     public List<Coords> MovePath
     {
@@ -47,29 +59,15 @@ public class Player : MonoBehaviour
         set => movePath = value;
     }
 
-    TileController currentTileContorller;
-
     public TileController TileController
     {
         get => currentTileContorller;
         set => currentTileContorller = value;
     }
 
-    bool isDead;
-    bool isClockingCheck;
-    private bool isJungleDebuff;
-
     public bool JungleDebuff => isJungleDebuff;
 
-    int moveBuffDuration;
-    int durabilityBuffDuration;
-    int clockBuffDuration;
-
-    [SerializeField] Renderer rend;
-    [SerializeField] Material cloakingMaterial;
-    [SerializeField] Material normalMaterial;
-
-    void Start()
+    private void Start()
     {
         movePath = new List<Coords>();
         moveRange = maxMoveRange;

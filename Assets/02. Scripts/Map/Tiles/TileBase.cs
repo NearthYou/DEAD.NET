@@ -9,45 +9,38 @@ using Random = UnityEngine.Random;
 [SelectionBase]
 public class TileBase : MonoBehaviour
 {
-    #region Variables
+    [Header("Tile Data")]
+    [SerializeField] private ItemSO itemSO;
+    [SerializeField] private ETileType tileType;
+    [SerializeField] private Sprite landformSprite;
+    [SerializeField] private SpriteRenderer[] resourceIcons;
+    
+    [Header("Particle Effects")]
+    [SerializeField] private ParticleSystem[] tileParticles;
+    [SerializeField] private bool hasEnvironmentalEffect = false;
 
-    [SerializeField] ItemSO itemSO;
-    [SerializeField] ETileType tileType;
-    [SerializeField] Sprite landformSprite;
-    [SerializeField] SpriteRenderer[] resourceIcons;
+    private Dictionary<EResourceType, int> gachaProbability;
+    private List<EResourceType> gachaList;
+    private List<Resource> appearanceResources;
 
-    Dictionary<EResourceType, int> gachaProbability;
-    List<EResourceType> gachaList;
-    List<Resource> appearanceResources;
+    private Tile tile;
+    private TileData tileData;
+    private bool inPlayerSight;
+    private bool isStructureNeighbor;
+    private string resourceText;
+    private string landformText;
+    private ZombieBase curZombies;
+    private StructureBase structure;
+    private GameObject structureObject;
 
-    Tile tile;
     public Tile Tile => tile;
-
-    TileData tileData;
     public TileData TileData => tileData;
-
-    bool inPlayerSight;
-    bool isStructureNeighbor;
-
     public bool IsStructureNeighbor => isStructureNeighbor;
-
-    string resourceText;
-    string landformText;
-
-    ZombieBase curZombies;
-
     public ZombieBase CurZombies => curZombies;
-
-    StructureBase structure;
-    GameObject structureObject;
-
     public StructureBase Structure => structure;
-
     public GameObject StructureObject => structureObject;
-
     public ETileType TileType => tileType;
-
-    #endregion
+    public bool HasEnvironmentalEffect => hasEnvironmentalEffect;
 
     private void Awake()
     {
@@ -60,18 +53,20 @@ public class TileBase : MonoBehaviour
         landformText = tileData.Korean;
     }
 
-    void Start()
+    private void Start()
     {
         Player.PlayerSightUpdate += CheckPlayerTIle;
         tile = GetComponent<TileController>().Model;
+        
+        InitializeParticleEffects();
     }
 
-    void OnDestroy()
+    private void OnDestroy()
     {
         Player.PlayerSightUpdate -= CheckPlayerTIle;
     }
 
-    void GetTilData()
+    private void GetTilData()
     {
         gachaList.Clear();
         appearanceResources.Clear();
@@ -419,7 +414,7 @@ public class TileBase : MonoBehaviour
         }
     }
 
-    int GetTileDataIndex()
+    private int GetTileDataIndex()
     {
         switch (tileType)
         {
@@ -436,6 +431,96 @@ public class TileBase : MonoBehaviour
         }
 
         return 0;
+    }
+
+    /// <summary>
+    /// 파티클 이펙트를 초기화합니다.
+    /// </summary>
+    private void InitializeParticleEffects()
+    {
+        SetupTileTypeParticles();
+        
+        var mapManager = App.instance.GetMapManager();
+        if (mapManager != null)
+        {
+            mapManager.UpdateTileParticles(gameObject);
+        }
+    }
+    
+    /// <summary>
+    /// 타일 타입에 따른 파티클을 설정합니다.
+    /// </summary>
+    private void SetupTileTypeParticles()
+    {
+        switch (tileType)
+        {
+            case ETileType.Desert:
+                SetupDesertParticles();
+                break;
+            case ETileType.Tundra:
+                SetupTundraParticles();
+                break;
+            case ETileType.Jungle:
+                SetupJungleParticles();
+                break;
+            case ETileType.None:
+                SetupNoneTileParticles();
+                break;
+            default:
+                break;
+        }
+    }
+    
+    /// <summary>
+    /// 사막 타일의 파티클을 설정합니다.
+    /// </summary>
+    private void SetupDesertParticles()
+    {
+        hasEnvironmentalEffect = true;
+    }
+    
+    /// <summary>
+    /// 툰드라 타일의 파티클을 설정합니다.
+    /// </summary>
+    private void SetupTundraParticles()
+    {
+        hasEnvironmentalEffect = true;
+    }
+    
+    /// <summary>
+    /// 정글 타일의 파티클을 설정합니다.
+    /// </summary>
+    private void SetupJungleParticles()
+    {
+        hasEnvironmentalEffect = true;
+    }
+    
+    /// <summary>
+    /// 일반 타일의 파티클을 설정합니다.
+    /// </summary>
+    private void SetupNoneTileParticles()
+    {
+        hasEnvironmentalEffect = false;
+    }
+    
+    /// <summary>
+    /// 파티클 이펙트를 활성화/비활성화합니다.
+    /// </summary>
+    public void SetParticleEffectActive(bool active)
+    {
+        if (tileParticles != null)
+        {
+            foreach (var particle in tileParticles)
+            {
+                if (particle != null)
+                {
+                    if (active)
+                        particle.Play();
+                    else
+                        particle.Stop();
+                }
+            }
+        }
     }
 
     public void UpdateZombieInfo(ZombieBase zombie)

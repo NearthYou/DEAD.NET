@@ -6,33 +6,23 @@ using System;
 public abstract class StructureBase
 {
     protected string structureName;
+    protected Resource resource;
+    protected bool isUse;
+    protected bool isAccessible;
+    protected List<TileBase> neighborTiles;
+    protected List<TileBase> colleagues;
+    protected int visitDay;
+    
+    public ItemData specialItem;
+    public GameObject structureModel;
 
     public string StructureName => structureName;
-
-    protected Resource resource;
     public Resource Resource => resource;
-    
-    protected bool isUse;
     public bool IsUse => isUse;
-    
-    protected bool isAccessible;
     public bool IsAccessible => isAccessible;
-    
-    protected List<TileBase> neighborTiles;
-
     public List<TileBase> NeighborTiles => neighborTiles;
-
-    protected List<TileBase> colleagues;
-
     public List<TileBase> Colleagues => colleagues;
-    
-    protected int visitDay;
-
     public int VisitDay => visitDay;
-
-    public ItemData specialItem;
-    
-    public GameObject structureModel;
     
     public abstract void Init(List<TileBase> _neighborTiles, GameObject _structureModel, ItemSO _itemSO);
     public abstract void YesFunc();
