@@ -155,7 +155,7 @@ public class NextDayController : MonoBehaviour
 
         for (int i = 0; i < resources.Count; i++)
         {
-            string tileName = App.instance.GetMapManager().mapController
+            string tileName = MapController.Instance
                 .Player.TileController.GetComponent<TileBase>().TileData.English;
 
             int randomNumber = Random.Range(1, 6);

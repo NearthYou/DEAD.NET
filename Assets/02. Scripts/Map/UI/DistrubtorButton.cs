@@ -56,7 +56,7 @@ public class DistrubtorButton : MonoBehaviour, IPointerClickHandler, IPointerEnt
         {
             if (App.instance.GetMapManager().CheckCanInstallDrone())
             {
-                App.instance.GetMapManager().mapController.PreparingDistrubtor(true);
+                MapController.Instance.PreparingDistrubtor(true);
             }
         }
     }

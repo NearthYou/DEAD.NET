@@ -96,7 +96,7 @@ public class Explorer : MonoBehaviour
     {
         await UniTask.WaitUntil(()=> goToMap == true);
         
-        var sightTiles = App.instance.GetMapManager().mapController.GetSightTiles(curTile);
+        var sightTiles = MapController.Instance.GetSightTiles(curTile);
         foreach (var tile in sightTiles)
         {
             var tileBase = ((GameObject)tile.GameEntity).GetComponent<TileBase>();
@@ -106,7 +106,7 @@ public class Explorer : MonoBehaviour
             }
         }
         
-        App.instance.GetMapManager().mapController.RemoveExplorer(this);
+        MapController.Instance.RemoveExplorer(this);
         
         if (fogRevealerIndex >= 0 && fogRevealerIndex < FischlWorks_FogWar.csFogWar.instance._FogRevealers.Count)
         {

@@ -18,8 +18,8 @@ public class TutorialManager : Singleton<TutorialManager>
 
     IEnumerator WaitForMapManager()
     {
-        yield return new WaitUntil(() => App.instance.GetMapManager().mapController);
-        yield return new WaitUntil(() => App.instance.GetMapManager().mapController.Player != null);
+        yield return new WaitUntil(() => MapController.Instance);
+        yield return new WaitUntil(() => MapController.Instance.Player != null);
 
         StartTutorial();
     }

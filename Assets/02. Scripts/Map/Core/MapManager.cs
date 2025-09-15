@@ -11,31 +11,33 @@ using Random = System.Random;
 
 public class MapManager : ManagementBase
 {
-    [Header("Components")]
+    [Header("UI Components")]
     public MapUiController mapUIController;
-    public MapController mapController;
     public ResourceManager resourceManager;
     public ParticleLODManager particleLODManager;
     
-    [Header("Settings")]
+    [Header("Input Settings")]
     [SerializeField] private ETileMouseState mouseState;
     [SerializeField] private MapData mapData;
     
-    [Header("State")]
+    [Header("Input State")]
     public bool mouseIntreractable;
     
+    // UI 및 입력 관련 컴포넌트
     private Camera mainCamera;
     private MapCamera mapCineCamera;
     private TileController curTileController;
-    private StructureBase curStructure;
     private TileController cameraTarget;
-    private TileBase structureTileBase;
     
+    // 입력 상태 관리
     private bool canPlayerMove;
     private bool isDronePrepared;
     private bool isDisturbtorPrepared;
     private bool isCameraMove;
     private bool isTundraTile;
+    
+    // 게임 상태 (UI 표시용)
+    private StructureBase curStructure;
 
     private void Update()
     {
@@ -61,28 +63,29 @@ public class MapManager : ManagementBase
         mapUIController = GameObject.FindGameObjectWithTag("MapUi").GetComponent<MapUiController>();
         await UniTask.Yield();
         
-        mapController = GameObject.FindGameObjectWithTag("MapController").GetComponent<MapController>();
-        await UniTask.Yield();
-
-        mapController.InputMapData(mapData);
-        await UniTask.WaitUntil(() => mapController != null);
-        await UniTask.Delay(50);
-        
-        await mapController.GenerateMapAsync();
-        await UniTask.Delay(200);
-        
         mapCineCamera = GameObject.FindGameObjectWithTag("MapCamera").GetComponent<MapCamera>();
         await UniTask.Delay(100);
         
-        AllowMouseEvent(true);
         resourceManager = GameObject.FindGameObjectWithTag("Resource").GetComponent<ResourceManager>();
         await UniTask.Delay(100);
         
-        await mapCineCamera.GetMapInfoAsync();
-        await UniTask.Delay(100);
+        if (MapController.Instance != null)
+        {
+            MapController.Instance.InputMapData(mapData);
+            await UniTask.WaitUntil(() => MapController.Instance != null);
+            await UniTask.Delay(50);
+            
+            await MapController.Instance.GenerateMapAsync();
+            await UniTask.Delay(200);
+            
+            await mapCineCamera.GetMapInfoAsync();
+            await UniTask.Delay(100);
 
-        mapController.SightCheckInit();
-        await UniTask.Delay(200);
+            MapController.Instance.SightCheckInit();
+            await UniTask.Delay(200);
+        }
+        
+        AllowMouseEvent(true);
         
         InitializeParticleLODManager();
     }
@@ -96,7 +99,7 @@ public class MapManager : ManagementBase
     {
         if (EventSystem.current.IsPointerOverGameObject())
         {
-            mapController.DeselectAllBorderTiles();
+            MapController.Instance.DeselectAllBorderTiles();
             return;
         }
 
@@ -110,9 +113,9 @@ public class MapManager : ManagementBase
         {
             tileController = hit.transform.parent.GetComponent<TileController>();
 
-            mapController.DeselectAllBorderTiles();
+            MapController.Instance.DeselectAllBorderTiles();
 
-            if (!mapController.CheckPlayersView(tileController))
+            if (!MapController.Instance.CheckPlayersView(tileController))
             {
                 mapUIController.FalseTileInfo();
                 return;
@@ -121,27 +124,26 @@ public class MapManager : ManagementBase
             switch (mouseState)
             {
                 case ETileMouseState.CanClick:
-                    mapController.DefaultMouseOverState(tileController);
+                    MapController.Instance.DefaultMouseOverState(tileController);
 
                     if (tileController != curTileController)
                         mapUIController.FalseTileInfo();
                     break;
 
                 case ETileMouseState.CanPlayerMove:
-                    mapController.TilePathFinderSurroundings(tileController);
-                    mapController.AddSelectedTilesList(tileController);
+                    MapController.Instance.TilePathFinderSurroundings(tileController);
+                    MapController.Instance.AddSelectedTilesList(tileController);
                     break;
 
                 case ETileMouseState.DronePrepared:
                     if (isDisturbtorPrepared)
                     {
-                        mapController.DisturbtorPathFinder(tileController);
+                        MapController.Instance.DisturbtorPathFinder(tileController);
                     }
                     else
                     {
-                        mapController.ExplorerPathFinder(tileController, 5);
+                        MapController.Instance.ExplorerPathFinder(tileController, 5);
                     }
-
                     break;
             }
 
@@ -149,7 +151,7 @@ public class MapManager : ManagementBase
         }
         else
         {
-            mapController.DeselectAllBorderTiles();
+            MapController.Instance.DeselectAllBorderTiles();
             mapUIController.FalseTileInfo();
         }
 
@@ -166,11 +168,10 @@ public class MapManager : ManagementBase
 
         if (Input.GetMouseButtonDown(0))
         {
-            // 플레이어를 클릭한 경우
             if (Physics.Raycast(ray, out hit, Mathf.Infinity, onlyLayerMaskPlayer))
             {
                 if (!isDronePrepared)
-                    canPlayerMove = mapController.PlayerCanMoveCheck();
+                    canPlayerMove = MapController.Instance.PlayerCanMoveCheck();
             }
             else if (Physics.Raycast(ray, out hit, Mathf.Infinity, onlyLayerMaskTile))
             {
@@ -183,10 +184,10 @@ public class MapManager : ManagementBase
                 }
                 else if (canPlayerMove)
                 {
-                    if (mapController.SelectPlayerMovePoint(tileController))
+                    if (MapController.Instance.SelectPlayerMovePoint(tileController))
                     {
                         mapUIController.OnPlayerMovePoint(tileController.transform);
-                        mapController.MovePointerOn(tileController.transform.position);
+                        MapController.Instance.MovePointerOn(tileController.transform.position);
                         canPlayerMove = false;
                     }
                     else
@@ -196,11 +197,11 @@ public class MapManager : ManagementBase
                 {
                     if (isDisturbtorPrepared)
                     {
-                        mapController.SelectTileForDisturbtor(tileController);
+                        MapController.Instance.SelectTileForDisturbtor(tileController);
                     }
                     else
                     {
-                        mapController.SelectTileForExplorer(tileController);
+                        MapController.Instance.SelectTileForExplorer(tileController);
                     }
                 }
             }
@@ -208,24 +209,22 @@ public class MapManager : ManagementBase
 
         if (Input.GetMouseButtonDown(1))
         {
-            mapController.DeselectAllBorderTiles();
+            MapController.Instance.DeselectAllBorderTiles();
 
             if (canPlayerMove)
             {
                 canPlayerMove = false;
             }
 
-            // 목적지 정한 이후 취소 가능
-
             if (isDronePrepared)
             {
                 if (isDisturbtorPrepared)
                 {
-                    mapController.PreparingDistrubtor(false);
+                    MapController.Instance.PreparingDistrubtor(false);
                 }
                 else
                 {
-                    mapController.PreparingExplorer(false);
+                    MapController.Instance.PreparingExplorer(false);
                 }
             }
 
@@ -256,10 +255,10 @@ public class MapManager : ManagementBase
 
     public async UniTask NextDayCoroutineAsync()
     {
-        await mapController.NextDayAsync();
-        resourceManager.GetResource(mapController.Player.TileController);
+        await MapController.Instance.NextDayAsync();
+        resourceManager.GetResource(MapController.Instance.Player.TileController);
         mapUIController.OffPlayerMovePoint();
-        mapController.OnlyMovePointerOff();
+        MapController.Instance.OnlyMovePointerOff();
         
         CheckRoutine();
     }
@@ -296,32 +295,20 @@ public class MapManager : ManagementBase
     {
         CheckZombies();
         CheckStructureNeighbor();
-
-        // 튜토리얼 네트워크 칩
-        // if(isVisitNoneTile == false)
-        // {
-        //     TutorialTileCheck();
-        // }
-        
         AllowMouseEvent(true);
     }
 
     public void CheckZombies()
     {
-        if (mapController.CheckZombies())
+        if (MapController.Instance.CheckZombies())
         {
             UIManager.instance.GetAlertController().SetAlert("caution", true);
         }
-        else
-            return;
     }
 
-    /// <summary>
-    /// 현재 타일이 구조물 인접타일인지 확인
-    /// </summary>
     public void CheckStructureNeighbor()
     {
-        var structure = mapController.SensingStructure();
+        var structure = MapController.Instance.SensingStructure();
         if (structure != null)
         {
             if (structure is Tower)
@@ -330,15 +317,11 @@ public class MapManager : ManagementBase
             if (structure.IsUse == false)
                 UIManager.instance.GetPageController().SetSelectPage("structureSelect", structure);
         }
-        else
-        {
-            return;
-        }
     }
 
     public void CheckLandformPlayMusic()
     {
-        var curTile = mapController.Player.TileController.GetComponent<TileBase>();
+        var curTile = MapController.Instance.Player.TileController.GetComponent<TileBase>();
 
         switch (curTile.TileData.English)
         {
@@ -362,22 +345,20 @@ public class MapManager : ManagementBase
         int randomNumber = UnityEngine.Random.Range(1, 4);
 
         if (randomNumber == 3)
-            mapController.SpawnStructureZombies(structure.Colleagues);
+            MapController.Instance.SpawnStructureZombies(structure.Colleagues);
 
-        // 플레이어 체력 0으로 만들어서 경로 선택 막기
         if (isTundraTile)
         {
             UIManager.instance.GetPageController().SetResultPage("SEARCH_TUNDRA", false);
-            mapController.Player.SetHealth(false);
+            MapController.Instance.Player.SetHealth(false);
         }
 
-        // 경로 삭제
         MovePathDelete();
 
         structure.structureModel.GetComponent<StructureFade>().FadeIn();
         structure.Colleagues.ForEach(tile => tile.ResourceUpdate(true));
 
-        mapController.SpawnSpecialItemRandomTile(structure.Colleagues);
+        MapController.Instance.SpawnSpecialItemRandomTile(structure.Colleagues);
         curStructure = structure;
     }
 
@@ -387,12 +368,12 @@ public class MapManager : ManagementBase
 
     public void MovePathDelete()
     {
-        if (mapController.IsMovePathSaved() == false)
+        if (MapController.Instance.IsMovePathSaved() == false)
             return;
 
         mapUIController.OffPlayerMovePoint();
-        mapController.MovePointerOff();
-        mapController.DeletePlayerMovePath();
+        MapController.Instance.MovePointerOff();
+        MapController.Instance.DeletePlayerMovePath();
     }
 
     // public void TutorialTileCheck()
@@ -406,12 +387,12 @@ public class MapManager : ManagementBase
 
     public bool SensingSignalTower()
     {
-        return mapController.SensingSignalTower();
+        return MapController.Instance.SensingSignalTower();
     }
 
     public bool SensingProductionStructure()
     {
-        return mapController.SensingProductionStructure();
+        return MapController.Instance.SensingProductionStructure();
     }
 
     public bool SignalTowerQuestCheck()
@@ -429,10 +410,8 @@ public class MapManager : ManagementBase
         }
     }
 
-    // 카메라 정중앙 좌표를 반환하는 함수
     public void GetCameraCenterTile()
     {
-        // 메인 카메라 캐시 사용
         if (mainCamera == null)
             mainCamera = Camera.main;
             
@@ -455,21 +434,17 @@ public class MapManager : ManagementBase
             if (cameraTarget != target)
             {
                 cameraTarget = target;
-                // OcclusionCheck를 지연시켜 CPU 스파이크 방지
                 StartCoroutine(DelayedOcclusionCheck());
             }
         }
     }
     
-    /// <summary>
-    /// OcclusionCheck를 지연시켜 실행
-    /// </summary>
     private IEnumerator DelayedOcclusionCheck()
     {
-        yield return null; // 한 프레임 대기
+        yield return null;
         if (cameraTarget != null)
         {
-            mapController.OcclusionCheck(cameraTarget.Model);
+            MapController.Instance.OcclusionCheck(cameraTarget.Model);
         }
     }
     
@@ -488,11 +463,7 @@ public class MapManager : ManagementBase
         if(resources.Find(x=> x.ItemBase.data.Code == "ITEM_GAS") != null)
         {
             UIManager.instance.GetPageController().SetResultPage("ACIDENT_ETHER", false);
-            mapController.Player.SetHealth(false);
-        }
-        else
-        {
-            return;
+            MapController.Instance.Player.SetHealth(false);
         }
     }
 
@@ -518,12 +489,9 @@ public class MapManager : ManagementBase
 
     public void InvocationExplorers()
     {
-        mapController.InvocationExplorers();
+        MapController.Instance.InvocationExplorers();
     }
     
-    /// <summary>
-    /// 파티클 LOD 매니저를 초기화합니다.
-    /// </summary>
     private void InitializeParticleLODManager()
     {
         if (particleLODManager == null)
@@ -534,9 +502,6 @@ public class MapManager : ManagementBase
         }
     }
     
-    /// <summary>
-    /// 특정 타일의 파티클을 강제로 업데이트합니다.
-    /// </summary>
     public void UpdateTileParticles(GameObject tileObject)
     {
         if (particleLODManager != null)
@@ -545,9 +510,6 @@ public class MapManager : ManagementBase
         }
     }
     
-    /// <summary>
-    /// 모든 파티클의 LOD를 즉시 업데이트합니다.
-    /// </summary>
     public void UpdateAllParticleLOD()
     {
         if (particleLODManager != null)
@@ -556,9 +518,6 @@ public class MapManager : ManagementBase
         }
     }
     
-    /// <summary>
-    /// 모든 파티클의 LOD를 비동기로 업데이트합니다.
-    /// </summary>
     public async UniTask UpdateAllParticleLODAsync()
     {
         if (particleLODManager != null)
@@ -567,9 +526,6 @@ public class MapManager : ManagementBase
         }
     }
     
-    /// <summary>
-    /// 파티클 LOD 설정을 변경합니다.
-    /// </summary>
     public void SetParticleLODSettings(float highDistance, float mediumDistance, float lowDistance)
     {
         if (particleLODManager != null)
@@ -578,9 +534,6 @@ public class MapManager : ManagementBase
         }
     }
     
-    /// <summary>
-    /// 파티클 LOD 활성화 상태를 변경합니다.
-    /// </summary>
     public void SetParticleLODEnabled(bool enabled)
     {
         if (particleLODManager != null)

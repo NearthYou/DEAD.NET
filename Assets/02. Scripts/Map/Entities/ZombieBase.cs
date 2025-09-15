@@ -212,13 +212,13 @@ public class ZombieBase : MonoBehaviour
             return;
         }
 
-        if (isChasingPlayer && !App.instance.GetMapManager().mapController.Player.GetIsClocking())
+        if (isChasingPlayer && !MapController.Instance.Player.GetIsClocking())
         {
             //Debug.Log(gameObject.name + "가 플레이어를 발견했습니다!");
-            MoveToAttackAsync(App.instance.GetMapManager().mapController.Player.TileController.Model).Forget();
+            MoveToAttackAsync(MapController.Instance.Player.TileController.Model).Forget();
 
             // 플레이어 바라보기
-            var updatePos = App.instance.GetMapManager().mapController.Player.transform.position;
+            var updatePos = MapController.Instance.Player.transform.position;
             updatePos.y += 0.6f;
             transform.LookAt(updatePos);
         }
@@ -239,10 +239,10 @@ public class ZombieBase : MonoBehaviour
         Tile pointTile;
         Vector3 pointPos;
 
-        if (movePath.Count == 0 && target == App.instance.GetMapManager().mapController.Player.TileController.Model)
+        if (movePath.Count == 0 && target == MapController.Instance.Player.TileController.Model)
         {
             // 플레이어가 1칸 내에 있는 경우
-            AttackPlayer(App.instance.GetMapManager().mapController.Player);
+            AttackPlayer(MapController.Instance.Player);
         }
         else
         {
@@ -253,7 +253,7 @@ public class ZombieBase : MonoBehaviour
 
             for (int i = 0; i < moveCost; i++)
             {
-                pointTile = App.instance.GetMapManager().mapController.GetTileFromCoords(movePath[i]);
+                pointTile = MapController.Instance.GetTileFromCoords(movePath[i]);
                 pointPos = ((GameObject)pointTile.GameEntity).transform.position;
                 pointPos.y += 0.6f;
 
@@ -284,7 +284,7 @@ public class ZombieBase : MonoBehaviour
             rand = Random.Range(0, candidate.Count);
         }
 
-        if (candidate[rand] == App.instance.GetMapManager().mapController.Player.TileController.Model)
+        if (candidate[rand] == MapController.Instance.Player.TileController.Model)
             rand--;
         var targetPos = ((GameObject)candidate[rand].GameEntity).transform.position;
         targetPos.y += 0.6f;

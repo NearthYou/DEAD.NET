@@ -152,7 +152,7 @@ public class Player : MonoBehaviour
         
         for (int i = 0; i < candidate.Count; i++)
         {
-            if(App.instance.GetMapManager().mapController.CheckTileType(candidate[i], "LandformPlain"))
+            if(MapController.Instance.CheckTileType(candidate[i], "LandformPlain"))
             {
                 if (((GameObject)candidate[i].GameEntity).GetComponent<TileBase>().Structure == null &&
                     ((GameObject)candidate[i].GameEntity).GetComponent<TileBase>().CurZombies == null)

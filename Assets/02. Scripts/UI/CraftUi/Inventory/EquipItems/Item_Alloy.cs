@@ -9,14 +9,14 @@ public class Item_Alloy : ItemBase
 
     public override void Equip()
     {
-        beforeDurabillity = App.instance.GetMapManager().mapController.Player.Durability;
+        beforeDurabillity = MapController.Instance.Player.Durability;
 
-        App.instance.GetMapManager().mapController.Player.Durability += (int)data.value1;
+        MapController.Instance.Player.Durability += (int)data.value1;
         UIManager.instance.GetUpperController().IncreaseDurabillityAnimation();
     }
 
     public override bool CheckMeetCondition()
     {
-        return (App.instance.GetMapManager().mapController.Player.Durability <= beforeDurabillity);
+        return (MapController.Instance.Player.Durability <= beforeDurabillity);
     }
 }

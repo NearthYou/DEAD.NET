@@ -14,8 +14,8 @@ public class LoadingUiController : MonoBehaviour
     {
         UIManager.instance.AddCurrUIName("UI_LOADING");
 
-        yield return new WaitUntil(() => App.instance.GetMapManager().mapController != null);
-        yield return new WaitUntil(() => App.instance.GetMapManager().mapController.LoadingComplete == true);
+        yield return new WaitUntil(() => MapController.Instance != null);
+        yield return new WaitUntil(() => MapController.Instance.LoadingComplete == true);
 
         App.instance.GetSoundManager().PlayBGM("BGM_InGameTheme");
         gameObject.SetActive(false);

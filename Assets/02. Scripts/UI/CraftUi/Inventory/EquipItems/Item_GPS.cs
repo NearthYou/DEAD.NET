@@ -11,7 +11,7 @@ public class Item_GPS : ItemBase
     {
         beforeDay = UIManager.instance.GetNoteController().dayCount;
 
-        App.instance.GetMapManager().mapController.Player.AddSightRange((int)data.value1);
+        MapController.Instance.Player.AddSightRange((int)data.value1);
     }
 
     public override bool CheckMeetCondition()

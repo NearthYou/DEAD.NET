@@ -56,7 +56,7 @@ public class ExplorerButton : MonoBehaviour, IPointerClickHandler, IPointerEnter
         {
             if (App.instance.GetMapManager().CheckCanInstallDrone())
             {
-                App.instance.GetMapManager().mapController.PreparingExplorer(true);
+                MapController.Instance.PreparingExplorer(true);
             }
         }
     }
