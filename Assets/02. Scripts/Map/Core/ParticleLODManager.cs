@@ -1,0 +1,342 @@
+using System.Collections.Generic;
+using UnityEngine;
+using Hexamap;
+
+/// <summary>
+/// 타일 파티클 시스템의 LOD 관리를 담당하는 클래스
+/// 거리와 시야에 따라 파티클의 품질과 활성화 상태를 제어합니다.
+/// </summary>
+public class ParticleLODManager : MonoBehaviour
+{
+    [Header("LOD Settings")]
+    [SerializeField] private float highQualityDistance = 10f;
+    [SerializeField] private float mediumQualityDistance = 20f;
+    [SerializeField] private float lowQualityDistance = 40f;
+    
+    [Header("Particle Settings")]
+    [SerializeField] private bool enableParticleLOD = true;
+    [SerializeField] private float updateInterval = 0.1f;
+    
+    public enum ParticleLODLevel
+    {
+        Disabled = 0,
+        Low = 1,
+        Medium = 2,
+        High = 3
+    }
+    
+    [System.Serializable]
+    public class ParticleInfo
+    {
+        public GameObject tileObject;
+        public ParticleSystem[] particleSystems;
+        public ParticleLODLevel currentLOD;
+        public float distanceToPlayer;
+        public bool isInSight;
+        
+        public ParticleInfo(GameObject tile, ParticleSystem[] particles)
+        {
+            tileObject = tile;
+            particleSystems = particles;
+            currentLOD = ParticleLODLevel.Disabled;
+            distanceToPlayer = float.MaxValue;
+            isInSight = false;
+        }
+    }
+    
+    private Dictionary<GameObject, ParticleInfo> particleCache = new Dictionary<GameObject, ParticleInfo>();
+    private List<ParticleInfo> allParticles = new List<ParticleInfo>();
+    
+    private MapController mapController;
+    private Player player;
+    private Camera mainCamera;
+    
+    private float lastUpdateTime;
+    private int currentUpdateIndex = 0;
+    private int particlesPerFrame = 5;
+    
+    private void Start()
+    {
+        InitializeReferences();
+        StartCoroutine(InitializeParticleSystem());
+    }
+    
+    private void InitializeReferences()
+    {
+        mapController = FindObjectOfType<MapController>();
+        player = FindObjectOfType<Player>();
+        mainCamera = Camera.main;
+        
+        if (mapController == null || player == null || mainCamera == null)
+        {
+            enabled = false;
+        }
+    }
+    
+    private System.Collections.IEnumerator InitializeParticleSystem()
+    {
+        yield return new WaitUntil(() => mapController.LoadingComplete);
+        
+        // 모든 타일에서 파티클 시스템 찾기
+        var allTiles = mapController.GetAllTiles();
+        
+        foreach (var tile in allTiles)
+        {
+            GameObject tileObject = (GameObject)tile.GameEntity;
+            if (tileObject != null)
+            {
+                RegisterTileParticles(tileObject);
+            }
+        }
+        
+    }
+    
+    /// <summary>
+    /// 타일의 파티클 시스템을 등록합니다.
+    /// </summary>
+    public void RegisterTileParticles(GameObject tileObject)
+    {
+        if (particleCache.ContainsKey(tileObject))
+            return;
+            
+        ParticleSystem[] particles = tileObject.GetComponentsInChildren<ParticleSystem>(true);
+        
+        if (particles.Length > 0)
+        {
+            ParticleInfo info = new ParticleInfo(tileObject, particles);
+            particleCache[tileObject] = info;
+            allParticles.Add(info);
+            
+            SetParticleLOD(info, ParticleLODLevel.Disabled);
+        }
+    }
+    
+    /// <summary>
+    /// 타일의 파티클 시스템을 제거합니다.
+    /// </summary>
+    public void UnregisterTileParticles(GameObject tileObject)
+    {
+        if (particleCache.TryGetValue(tileObject, out ParticleInfo info))
+        {
+            allParticles.Remove(info);
+            particleCache.Remove(tileObject);
+        }
+    }
+    
+    private void Update()
+    {
+        if (!enableParticleLOD || allParticles.Count == 0)
+            return;
+            
+        if (Time.time - lastUpdateTime < updateInterval)
+            return;
+            
+        lastUpdateTime = Time.time;
+        
+        UpdateParticlesInBatches();
+    }
+    
+    private void UpdateParticlesInBatches()
+    {
+        if (allParticles == null || allParticles.Count == 0)
+            return;
+            
+        int endIndex = Mathf.Min(currentUpdateIndex + particlesPerFrame, allParticles.Count);
+        
+        for (int i = currentUpdateIndex; i < endIndex; i++)
+        {
+            if (allParticles[i] != null)
+            {
+                UpdateParticleLOD(allParticles[i]);
+            }
+        }
+        
+        currentUpdateIndex = endIndex;
+        
+        if (currentUpdateIndex >= allParticles.Count)
+        {
+            currentUpdateIndex = 0;
+        }
+    }
+    
+    private void UpdateParticleLOD(ParticleInfo info)
+    {
+        if (info == null || info.tileObject == null || player == null)
+            return;
+            
+        if (info.tileObject.transform == null)
+            return;
+            
+        float distance = Vector3.Distance(player.transform.position, info.tileObject.transform.position);
+        info.distanceToPlayer = distance;
+        
+        info.isInSight = IsTileInPlayerSight(info.tileObject);
+        
+        ParticleLODLevel newLOD = DetermineLODLevel(distance, info.isInSight);
+        
+        if (newLOD != info.currentLOD)
+        {
+            SetParticleLOD(info, newLOD);
+            info.currentLOD = newLOD;
+        }
+    }
+    
+    private bool IsTileInPlayerSight(GameObject tileObject)
+    {
+        if (mapController == null || tileObject == null)
+            return false;
+            
+        var sightTiles = mapController.GetPlayerSightTiles();
+        
+        if (sightTiles == null)
+            return false;
+        
+        foreach (var tile in sightTiles)
+        {
+            if (tile != null && tile.GameEntity != null && (GameObject)tile.GameEntity == tileObject)
+                return true;
+        }
+        
+        return false;
+    }
+    
+    private ParticleLODLevel DetermineLODLevel(float distance, bool inSight)
+    {
+        if (!inSight)
+            return ParticleLODLevel.Disabled;
+            
+        if (distance <= highQualityDistance)
+            return ParticleLODLevel.High;
+        else if (distance <= mediumQualityDistance)
+            return ParticleLODLevel.Medium;
+        else if (distance <= lowQualityDistance)
+            return ParticleLODLevel.Low;
+        else
+            return ParticleLODLevel.Disabled;
+    }
+    
+    private void SetParticleLOD(ParticleInfo info, ParticleLODLevel lodLevel)
+    {
+        if (info.particleSystems == null)
+            return;
+            
+        foreach (var particleSystem in info.particleSystems)
+        {
+            if (particleSystem == null)
+                continue;
+                
+            switch (lodLevel)
+            {
+                case ParticleLODLevel.Disabled:
+                    SetParticleSystemSettings(particleSystem, false, 0f, 0f, 0f);
+                    break;
+                    
+                case ParticleLODLevel.Low:
+                    SetParticleSystemSettings(particleSystem, true, 0.3f, 0.5f, 0.3f);
+                    break;
+                    
+                case ParticleLODLevel.Medium:
+                    SetParticleSystemSettings(particleSystem, true, 0.7f, 0.8f, 0.7f);
+                    break;
+                    
+                case ParticleLODLevel.High:
+                    SetParticleSystemSettings(particleSystem, true, 1.0f, 1.0f, 1.0f);
+                    break;
+            }
+        }
+    }
+    
+    private void SetParticleSystemSettings(ParticleSystem ps, bool enabled, float emissionRate, float maxParticles, float simulationSpeed)
+    {
+        var emission = ps.emission;
+        var main = ps.main;
+        
+        // 파티클 시스템 활성화/비활성화
+        if (enabled && !ps.isPlaying)
+        {
+            ps.Play();
+        }
+        else if (!enabled && ps.isPlaying)
+        {
+            ps.Stop();
+        }
+        
+        emission.rateOverTime = emission.rateOverTime.constant * emissionRate;
+        
+        main.maxParticles = Mathf.RoundToInt(main.maxParticles * maxParticles);
+        
+        main.simulationSpeed = simulationSpeed;
+    }
+    
+    /// <summary>
+    /// 특정 타일의 파티클을 강제로 업데이트합니다.
+    /// </summary>
+    public void ForceUpdateTileParticles(GameObject tileObject)
+    {
+        if (particleCache.TryGetValue(tileObject, out ParticleInfo info))
+        {
+            UpdateParticleLOD(info);
+        }
+    }
+    
+    /// <summary>
+    /// 모든 파티클의 LOD를 즉시 업데이트합니다.
+    /// </summary>
+    public void ForceUpdateAllParticles()
+    {
+        foreach (var info in allParticles)
+        {
+            UpdateParticleLOD(info);
+        }
+    }
+    
+    /// <summary>
+    /// 파티클 LOD 설정을 변경합니다.
+    /// </summary>
+    public void SetLODSettings(float highDist, float mediumDist, float lowDist)
+    {
+        highQualityDistance = highDist;
+        mediumQualityDistance = mediumDist;
+        lowQualityDistance = lowDist;
+        
+        ForceUpdateAllParticles();
+    }
+    
+    /// <summary>
+    /// 파티클 LOD 활성화 상태를 변경합니다.
+    /// </summary>
+    public void SetParticleLODEnabled(bool enabled)
+    {
+        enableParticleLOD = enabled;
+        
+        if (!enabled)
+        {
+            foreach (var info in allParticles)
+            {
+                SetParticleLOD(info, ParticleLODLevel.Disabled);
+            }
+        }
+        else
+        {
+            ForceUpdateAllParticles();
+        }
+    }
+    
+    private void OnDestroy()
+    {
+        foreach (var info in allParticles)
+        {
+            if (info.particleSystems != null)
+            {
+                foreach (var ps in info.particleSystems)
+                {
+                    if (ps != null)
+                    {
+                        ps.Stop();
+                    }
+                }
+            }
+        }
+    }
+    
+}
