@@ -59,11 +59,39 @@ flowchart TD
 
 `Coords`는 열의 홀짝을 기준으로 여섯 이웃을 계산합니다. `AStar.FindPath`는 custom heap, 방문 집합, node cache와 Manhattan 형태의 휴리스틱을 사용합니다.
 
+```mermaid
+classDiagram
+    class MapController
+    class DroneManager
+    class ZombieBase
+    class AStar
+    class Coords
+    class TileBase
+    class MapVisibilityManager
+    class MapRenderingManager
+    class ParticleLODManager
+
+    MapController o-- DroneManager : 드론 배치와 회수
+    MapController o-- MapVisibilityManager : 시야 갱신
+    MapController o-- MapRenderingManager : 렌더 대상 갱신
+    ZombieBase --> MapController : 목표와 타일 조회
+    ZombieBase --> AStar : FindPath 호출
+    AStar --> Coords : 이웃 좌표 탐색
+    ZombieBase --> TileBase : 지형과 점유 상태 반영
+    MapVisibilityManager --> TileBase : 표시 상태 전달
+    MapRenderingManager --> MapController : 타일과 구조물 조회
+    ParticleLODManager --> MapController : 시야 타일 조회
+```
+
+`MapController`가 manager를 묶고, `ZombieBase`는 목표 조회와 이동 결과 반영에만 이 경계를 사용합니다. 경로 탐색은 `AStar`와 `Coords`, tile 상태는 `TileBase`가 맡습니다. source는 `Assets/02. Scripts/Map`과 `Assets/Hexamap`에서 확인할 수 있습니다.
+
 현재 구현은 계산한 `gScore`와 `fScore`를 heap이 비교하는 `Node` 우선순위 값에 연결하지 않습니다. 휴리스틱도 육각 좌표 전용 거리식이 아닙니다. 따라서 저장소에서는 최단 경로의 최적성을 검증했다고 주장하지 않습니다.
 
 ## 시야 밖 렌더링 비용 줄이기
 
 `MapVisibilityManager`는 플레이어 시야 타일을 `HashSet`에 보관합니다. `MapRenderingManager`는 타일과 구조물 목록, Renderer 참조, 직전 표시 상태를 캐시하고 상태가 달라진 대상만 갱신합니다.
+
+위 관계도에서 visibility와 rendering은 같은 타일을 다루지만 책임이 다릅니다. visibility는 `TileBase.UpdateVisibilityFromController`로 game state를 전달하고, rendering은 `MapController`에서 표시 대상을 읽어 Renderer 변경을 분산합니다. `ParticleLODManager`는 시야와 거리를 별도로 조회합니다.
 
 표시 여부를 바꿀 때는 가능한 경우 GameObject 전체를 켜고 끄지 않고 Renderer의 `enabled`를 변경합니다. 타일 visibility 갱신은 한 번에 몰리지 않도록 묶어서 나누며, Particle LOD도 같은 시야 흐름 뒤에서 갱신합니다.
 
