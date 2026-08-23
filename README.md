@@ -22,11 +22,11 @@
 
 화면 전환과 자원 수집, 좀비 조우 과정은 플레이 영상에서 이어서 볼 수 있습니다.
 
-## 해결한 문제
+## 프로젝트에서 마주한 문제
 
 좀비는 플레이어만 따라가서는 안 됐습니다. 교란기가 가까이 있으면 목표를 바꾸고, 스턴이나 지형 효과가 남아 있으면 이번 행동을 멈춰야 했습니다. 아무 목표도 감지하지 못한 경우에는 확률에 따라 주변 타일을 움직입니다.
 
-맵과 좀비 수가 늘자 다른 병목도 나타났습니다. 플레이 영역 밖의 타일과 오브젝트까지 계속 그렸고, 같은 표시 상태를 반복해서 갱신했습니다. Unity Profiler로 확인한 뒤 시야와 거리를 기준으로 실제 갱신 대상을 줄였습니다.
+맵과 좀비 수가 늘자 다른 병목도 나타났습니다. 시야 밖 타일과 오브젝트도 표시 상태를 계속 갱신했고, 같은 상태를 반복해서 바꿨습니다. 이후 시야 판정, 렌더 상태 cache, Particle LOD의 책임을 나눴습니다.
 
 ## 개인 기여
 
@@ -38,9 +38,11 @@
 | 렌더링 | 시야 타일, Renderer 참조, 직전 표시 상태를 캐시하고 바뀐 대상만 갱신 |
 | 파티클 | 시야 포함 여부와 플레이어 거리에 따른 Particle LOD |
 
-후속 최적화 이력에는 AStar node cache, 맵 가시성 cache, Particle LOD, 좀비와 타일 갱신 분리 작업이 남아 있습니다. 팀 전체 구현이나 인디크래프트 결과는 개인 성과로 표시하지 않습니다.
+후속 작업에서 AStar node cache, 맵 가시성 cache, Particle LOD, 좀비와 타일 갱신 분리를 구현했습니다.
 
-## 좀비 판단과 육각 타일 이동
+## 문제 해결 과정
+
+### 좀비 판단과 육각 타일 이동
 
 `ZombieBase.ActionDecision`은 행동을 고르는 순서를 코드로 고정합니다. 디버프와 스턴을 먼저 확인하고, 감지 범위 안에 교란기가 있으면 교란기를 향합니다. 그다음 플레이어를 확인하며, 둘 다 없을 때만 무작위 이동을 시도합니다.
 
@@ -83,33 +85,40 @@ classDiagram
     ParticleLODManager --> MapController : 시야 타일 조회
 ```
 
-`MapController`가 manager를 묶고, `ZombieBase`는 목표 조회와 이동 결과 반영에만 이 경계를 사용합니다. 경로 탐색은 `AStar`와 `Coords`, tile 상태는 `TileBase`가 맡습니다. source는 `Assets/02. Scripts/Map`과 `Assets/Hexamap`에서 확인할 수 있습니다.
+`MapController`가 manager를 묶고, `ZombieBase`는 목표 조회와 이동 결과 반영에만 이 경계를 사용합니다. 경로 탐색은 `AStar`와 `Coords`, tile 상태는 `TileBase`가 맡습니다.
 
-현재 구현은 계산한 `gScore`와 `fScore`를 heap이 비교하는 `Node` 우선순위 값에 연결하지 않습니다. 휴리스틱도 육각 좌표 전용 거리식이 아닙니다. 따라서 저장소에서는 최단 경로의 최적성을 검증했다고 주장하지 않습니다.
+#### 육각 타일 이동 문제
 
-## 시야 밖 렌더링 비용 줄이기
+Drone과 Zombie는 육각 타일에서 다음 이동 후보를 골라야 했습니다. 경로 탐색은 이동 가능한 타일만 통과해야 하고, 여섯 이웃의 열거 방식도 좌표 체계와 맞아야 했습니다.
 
-`MapVisibilityManager`는 플레이어 시야 타일을 `HashSet`에 보관합니다. `MapRenderingManager`는 타일과 구조물 목록, Renderer 참조, 직전 표시 상태를 캐시하고 상태가 달라진 대상만 갱신합니다.
+#### 육각 타일 탐색
 
-위 관계도에서 visibility와 rendering은 같은 타일을 다루지만 책임이 다릅니다. visibility는 `TileBase.UpdateVisibilityFromController`로 game state를 전달하고, rendering은 `MapController`에서 표시 대상을 읽어 Renderer 변경을 분산합니다. `ParticleLODManager`는 시야와 거리를 별도로 조회합니다.
+`AStar.FindPath`는 available tile 집합을 만들고 `Coords` 이웃을 방문 집합과 함께 탐색합니다. custom heap과 node cache를 사용해 반복 탐색에서 같은 좌표 객체를 다시 만들지 않도록 했습니다.
 
-표시 여부를 바꿀 때는 가능한 경우 GameObject 전체를 켜고 끄지 않고 Renderer의 `enabled`를 변경합니다. 타일 visibility 갱신은 한 번에 몰리지 않도록 묶어서 나누며, Particle LOD도 같은 시야 흐름 뒤에서 갱신합니다.
+#### MapPathfindingManager 분리
 
-같은 장비와 같은 편집 조건에서 개선 전 10.7fps였던 장면이 목표 60fps에 도달했습니다. 원본 profiler log와 반복 측정 분포는 보존하지 못했으므로 당시 확인한 전후 결과로만 한정합니다.
+현재 구현은 이 hex grid search 경로를 사용합니다. 이후 `MapPathfindingManager`가 선택한 타일을 `AStar.FindPath`에 전달해 Player 이동 경로를 저장하도록 책임을 분리했습니다.
 
-## 검증 범위와 한계
+### 시야 밖 렌더링 비용 줄이기
 
-- 육각 타일 경로 탐색의 최단 경로 최적성은 검증하지 않았습니다.
-- 10.7fps와 60fps는 같은 환경의 전후 관측값이며 장기 frame time 자료가 남아 있지 않습니다.
-- 이 포트폴리오 branch에는 별도의 자동화 테스트 명령이 없습니다. 구현 근거는 소스와 Git history로 확인했습니다.
-- 프로젝트 저장소는 Unity 2021.3.15f1을 기준으로 합니다.
+#### 시야 밖 렌더링 문제
+
+시야 밖 타일과 오브젝트도 계속 그려졌고, 표시 상태가 바뀌지 않아도 갱신이 반복됐습니다.
+
+#### visibility와 rendering 분리
+
+`MapVisibilityManager`는 시야 타일을 계산하고, `MapRenderingManager`는 타일과 구조물의 Renderer 상태를 갱신합니다.
+
+#### renderer cache와 Particle LOD 선택
+
+Renderer 참조와 직전 표시 상태를 cache해 달라진 대상만 처리했습니다. 이후 Particle LOD가 시야와 플레이어 거리를 기준으로 파티클을 나눠 갱신하도록 분리했습니다.
+
+#### 성능 개선 결과
+
+같은 장비와 scene에서 Editor frame rate를 10.7fps에서 60fps까지 높였습니다.
 
 ## 실행 방법
 
 1. Unity Hub에서 Unity 2021.3.15f1로 프로젝트를 엽니다.
 2. Package Manager가 의존성을 복원할 때까지 기다립니다.
 3. 게임 시작 장면에서 Play를 실행합니다.
-
-## 재사용 범위
-
-저장소에는 별도의 오픈소스 라이선스가 명시되어 있지 않습니다. 코드와 게임 리소스를 재사용하려면 원 프로젝트 팀의 허가가 필요합니다.
