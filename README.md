@@ -99,7 +99,9 @@ Drone과 Zombie는 육각 타일에서 다음 이동 후보를 골라야 했습�
 
 ### 경로 탐색 확인 범위
 
-현재 checkout의 README와 Git history에서 `52f5928`, `64df71c`의 구현 경로를 대조했습니다. checkout에는 `Assets` tree가 없어 이 문서 갱신에서 source를 다시 빌드하거나 실행하지는 못했습니다.
+현재 HEAD가 추적하는 `AStar.cs`, `Coords.cs`, `TileBase.cs`, `MapPathfindingManager.cs` source blob과 `52f5928`, `64df71c`의 변경을 대조했습니다.
+
+local sparse checkout은 `Assets`를 작업 디스크에 materialize하지 않아 Unity build와 PlayMode/EditMode test, runtime 재현은 이번 문서 갱신에서 실행하지 않았습니다.
 
 ### 육각 경로 탐색의 한계
 
@@ -131,7 +133,8 @@ Drone과 Zombie는 육각 타일에서 다음 이동 후보를 골라야 했습�
 
 - 육각 타일 경로 탐색의 최단 경로 최적성은 검증하지 않았습니다.
 - 10.7fps와 60fps는 같은 환경의 전후 관측값이며 장기 frame time 자료가 남아 있지 않습니다.
-- 이 포트폴리오 branch에는 별도의 자동화 테스트 명령이 없습니다. 구현 근거는 README와 Git history로 확인했습니다.
+- HEAD는 `Assets` source를 추적하며, 이번 문서 갱신에서는 관련 source blob과 Git history를 대조했습니다.
+- local sparse checkout이 `Assets`를 작업 디스크에 materialize하지 않아 Unity 프로젝트 materialization, build, PlayMode/EditMode test, runtime 및 profiler 재현은 실행하지 않았습니다.
 - 프로젝트 저장소는 Unity 2021.3.15f1을 기준으로 합니다.
 
 ## 실행 방법
