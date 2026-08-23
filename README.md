@@ -22,7 +22,7 @@
 
 화면 전환과 자원 수집, 좀비 조우 과정은 플레이 영상에서 이어서 볼 수 있습니다.
 
-## 해결한 문제
+## 프로젝트에서 마주한 문제
 
 좀비는 플레이어만 따라가서는 안 됐습니다. 교란기가 가까이 있으면 목표를 바꾸고, 스턴이나 지형 효과가 남아 있으면 이번 행동을 멈춰야 했습니다. 아무 목표도 감지하지 못한 경우에는 확률에 따라 주변 타일을 움직입니다.
 
@@ -40,7 +40,11 @@
 
 후속 최적화 이력에는 AStar node cache, 맵 가시성 cache, Particle LOD, 좀비와 타일 갱신 분리 작업이 남아 있습니다. 팀 전체 구현이나 인디크래프트 결과는 개인 성과로 표시하지 않습니다.
 
-## 좀비 판단과 육각 타일 이동
+## 문제 해결 과정
+
+각 사례는 문제와 원인, 선택과 구현, 검증과 한계 순서로 정리했습니다.
+
+### 좀비 판단과 육각 타일 이동
 
 `ZombieBase.ActionDecision`은 행동을 고르는 순서를 코드로 고정합니다. 디버프와 스턴을 먼저 확인하고, 감지 범위 안에 교란기가 있으면 교란기를 향합니다. 그다음 플레이어를 확인하며, 둘 다 없을 때만 무작위 이동을 시도합니다.
 
@@ -85,51 +89,51 @@ classDiagram
 
 `MapController`가 manager를 묶고, `ZombieBase`는 목표 조회와 이동 결과 반영에만 이 경계를 사용합니다. 경로 탐색은 `AStar`와 `Coords`, tile 상태는 `TileBase`가 맡습니다.
 
-### 육각 타일 이동 문제
+#### 육각 타일 이동 문제
 
 Drone과 Zombie는 육각 타일에서 다음 이동 후보를 골라야 했습니다. 경로 탐색은 이동 가능한 타일만 통과해야 하고, 여섯 이웃의 열거 방식도 좌표 체계와 맞아야 했습니다.
 
-### 육각 타일 탐색의 원인 확인
+#### 육각 타일 탐색의 원인 확인
 
-`52f5928`의 `AStar.FindPath`는 available tile 집합을 만들고, `Coords` 이웃을 방문 집합과 함께 탐색합니다. 같은 변경에는 heap, node cache, `gScore`, `fScore`, Manhattan 형태 휴리스틱이 남아 있습니다.
+Git history에서 `AStar.FindPath`가 available tile 집합을 만들고 `Coords` 이웃을 방문 집합과 함께 탐색하도록 바뀐 흐름을 확인했습니다. 같은 변경에는 heap, node cache, `gScore`, `fScore`, Manhattan 형태 휴리스틱이 남아 있습니다.
 
-### 현재 hex grid search 선택
+#### 현재 hex grid search 선택
 
-현재 구현은 이 hex grid search 경로를 사용했습니다. `64df71c`에서는 `MapPathfindingManager`가 선택한 타일을 `AStar.FindPath`에 전달해 Player 이동 경로를 저장하도록 분리했습니다.
+현재 구현은 이 hex grid search 경로를 사용합니다. 이후 `MapPathfindingManager`가 선택한 타일을 `AStar.FindPath`에 전달해 Player 이동 경로를 저장하도록 책임을 분리했습니다.
 
-### 경로 탐색 확인 범위
+#### 경로 탐색 확인 범위
 
-현재 HEAD가 추적하는 `AStar.cs`, `Coords.cs`, `TileBase.cs`, `MapPathfindingManager.cs` source blob과 `52f5928`, `64df71c`의 변경을 대조했습니다.
+현재 HEAD가 추적하는 `AStar.cs`, `Coords.cs`, `TileBase.cs`, `MapPathfindingManager.cs` source blob과 관련 변경 이력을 대조했습니다.
 
 local sparse checkout은 `Assets`를 작업 디스크에 materialize하지 않아 Unity build와 PlayMode/EditMode test, runtime 재현은 이번 문서 갱신에서 실행하지 않았습니다.
 
-### 육각 경로 탐색의 한계
+#### 육각 경로 탐색의 한계
 
 계산한 `gScore`와 `fScore`는 heap이 비교하는 `Node` 우선순위 값에 연결되지 않습니다. 휴리스틱도 육각 좌표 전용 거리식이 아니므로, 최단 경로의 최적성은 주장하지 않습니다.
 
-## 시야 밖 렌더링 비용 줄이기
+### 시야 밖 렌더링 비용 줄이기
 
-### 시야 밖 렌더링 문제
+#### 시야 밖 렌더링 문제
 
-시야 밖 타일과 오브젝트도 계속 그려졌고, 표시 상태가 바뀌지 않아도 갱신이 반복됐습니다. 이 상황은 README와 타일 cache 변경 커밋 `3092414`의 전후 코드에서 확인했습니다.
+시야 밖 타일과 오브젝트도 계속 그려졌고, 표시 상태가 바뀌지 않아도 갱신이 반복됐습니다. 이 상황은 README와 타일 cache 변경 전후의 source에서 확인했습니다.
 
-### visibility와 rendering 책임 확인
+#### visibility와 rendering 책임 확인
 
 초기 `MapController`는 시야 타일을 계산한 뒤 구조물과 타일의 표시 상태를 함께 처리했습니다. 이후 기록은 visibility가 시야를 판단하고 rendering이 Renderer 변경을 맡도록 책임을 분리한 맥락을 남깁니다.
 
-### renderer cache와 Particle LOD 선택
+#### renderer cache와 Particle LOD 선택
 
-`3092414`에서 Renderer 참조와 직전 표시 상태를 cache해 달라진 대상만 처리했습니다. `07dfd69`에서는 Particle LOD가 시야와 플레이어 거리를 기준으로 파티클을 나눠 갱신하도록 추가했습니다.
+Renderer 참조와 직전 표시 상태를 cache해 달라진 대상만 처리했습니다. 이후 Particle LOD가 시야와 플레이어 거리를 기준으로 파티클을 나눠 갱신하도록 분리했습니다.
 
-### 같은 scene 전후 관측 확인
+#### 같은 scene 전후 관측 확인
 
 같은 scene의 전후 관측값은 10.7fps에서 60fps였습니다. 이 수치는 당시 기록한 한 장면의 결과이며, cache와 Particle LOD가 추가된 커밋 이력과 함께 확인했습니다.
 
-### 렌더링 관측의 한계
+#### 렌더링 관측의 한계
 
 원본 profiler log와 반복 측정 분포는 남아 있지 않습니다. 따라서 이 관측값을 다른 scene, 장비, 맵 크기까지 일반화하거나 병목 비중을 수치로 단정하지 않습니다.
 
-## 검증 범위와 한계
+## 검증과 한계
 
 - 육각 타일 경로 탐색의 최단 경로 최적성은 검증하지 않았습니다.
 - 10.7fps와 60fps는 같은 환경의 전후 관측값이며 장기 frame time 자료가 남아 있지 않습니다.
