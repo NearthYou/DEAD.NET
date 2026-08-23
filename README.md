@@ -26,7 +26,7 @@
 
 좀비는 플레이어만 따라가서는 안 됐습니다. 교란기가 가까이 있으면 목표를 바꾸고, 스턴이나 지형 효과가 남아 있으면 이번 행동을 멈춰야 했습니다. 아무 목표도 감지하지 못한 경우에는 확률에 따라 주변 타일을 움직입니다.
 
-맵과 좀비 수가 늘자 다른 병목도 나타났습니다. 플레이 영역 밖의 타일과 오브젝트까지 계속 그렸고, 같은 표시 상태를 반복해서 갱신했습니다. Unity Profiler로 확인한 뒤 시야와 거리를 기준으로 실제 갱신 대상을 줄였습니다.
+맵과 좀비 수가 늘자 다른 병목도 나타났습니다. 시야 밖 타일과 오브젝트도 표시 상태를 계속 갱신했고, 같은 상태를 반복해서 바꿨습니다. 이후 시야 판정, 렌더 상태 cache, Particle LOD의 책임을 나눴습니다.
 
 ## 개인 기여
 
@@ -83,25 +83,55 @@ classDiagram
     ParticleLODManager --> MapController : 시야 타일 조회
 ```
 
-`MapController`가 manager를 묶고, `ZombieBase`는 목표 조회와 이동 결과 반영에만 이 경계를 사용합니다. 경로 탐색은 `AStar`와 `Coords`, tile 상태는 `TileBase`가 맡습니다. source는 `Assets/02. Scripts/Map`과 `Assets/Hexamap`에서 확인할 수 있습니다.
+`MapController`가 manager를 묶고, `ZombieBase`는 목표 조회와 이동 결과 반영에만 이 경계를 사용합니다. 경로 탐색은 `AStar`와 `Coords`, tile 상태는 `TileBase`가 맡습니다.
 
-현재 구현은 계산한 `gScore`와 `fScore`를 heap이 비교하는 `Node` 우선순위 값에 연결하지 않습니다. 휴리스틱도 육각 좌표 전용 거리식이 아닙니다. 따라서 저장소에서는 최단 경로의 최적성을 검증했다고 주장하지 않습니다.
+### 육각 타일 이동 문제
+
+Drone과 Zombie는 육각 타일에서 다음 이동 후보를 골라야 했습니다. 경로 탐색은 이동 가능한 타일만 통과해야 하고, 여섯 이웃의 열거 방식도 좌표 체계와 맞아야 했습니다.
+
+### 육각 타일 탐색의 원인 확인
+
+`52f5928`의 `AStar.FindPath`는 available tile 집합을 만들고, `Coords` 이웃을 방문 집합과 함께 탐색합니다. 같은 변경에는 heap, node cache, `gScore`, `fScore`, Manhattan 형태 휴리스틱이 남아 있습니다.
+
+### 현재 hex grid search 선택
+
+현재 구현은 이 hex grid search 경로를 사용했습니다. `64df71c`에서는 `MapPathfindingManager`가 선택한 타일을 `AStar.FindPath`에 전달해 Player 이동 경로를 저장하도록 분리했습니다.
+
+### 경로 탐색 확인 범위
+
+현재 checkout의 README와 Git history에서 `52f5928`, `64df71c`의 구현 경로를 대조했습니다. checkout에는 `Assets` tree가 없어 이 문서 갱신에서 source를 다시 빌드하거나 실행하지는 못했습니다.
+
+### 육각 경로 탐색의 한계
+
+계산한 `gScore`와 `fScore`는 heap이 비교하는 `Node` 우선순위 값에 연결되지 않습니다. 휴리스틱도 육각 좌표 전용 거리식이 아니므로, 최단 경로의 최적성은 주장하지 않습니다.
 
 ## 시야 밖 렌더링 비용 줄이기
 
-`MapVisibilityManager`는 플레이어 시야 타일을 `HashSet`에 보관합니다. `MapRenderingManager`는 타일과 구조물 목록, Renderer 참조, 직전 표시 상태를 캐시하고 상태가 달라진 대상만 갱신합니다.
+### 시야 밖 렌더링 문제
 
-위 관계도에서 visibility와 rendering은 같은 타일을 다루지만 책임이 다릅니다. visibility는 `TileBase.UpdateVisibilityFromController`로 game state를 전달하고, rendering은 `MapController`에서 표시 대상을 읽어 Renderer 변경을 분산합니다. `ParticleLODManager`는 시야와 거리를 별도로 조회합니다.
+시야 밖 타일과 오브젝트도 계속 그려졌고, 표시 상태가 바뀌지 않아도 갱신이 반복됐습니다. 이 상황은 README와 타일 cache 변경 커밋 `3092414`의 전후 코드에서 확인했습니다.
 
-표시 여부를 바꿀 때는 가능한 경우 GameObject 전체를 켜고 끄지 않고 Renderer의 `enabled`를 변경합니다. 타일 visibility 갱신은 한 번에 몰리지 않도록 묶어서 나누며, Particle LOD도 같은 시야 흐름 뒤에서 갱신합니다.
+### visibility와 rendering 책임 확인
 
-같은 장비와 같은 편집 조건에서 개선 전 10.7fps였던 장면이 목표 60fps에 도달했습니다. 원본 profiler log와 반복 측정 분포는 보존하지 못했으므로 당시 확인한 전후 결과로만 한정합니다.
+초기 `MapController`는 시야 타일을 계산한 뒤 구조물과 타일의 표시 상태를 함께 처리했습니다. 이후 기록은 visibility가 시야를 판단하고 rendering이 Renderer 변경을 맡도록 책임을 분리한 맥락을 남깁니다.
+
+### renderer cache와 Particle LOD 선택
+
+`3092414`에서 Renderer 참조와 직전 표시 상태를 cache해 달라진 대상만 처리했습니다. `07dfd69`에서는 Particle LOD가 시야와 플레이어 거리를 기준으로 파티클을 나눠 갱신하도록 추가했습니다.
+
+### 같은 scene 전후 관측 확인
+
+같은 scene의 전후 관측값은 10.7fps에서 60fps였습니다. 이 수치는 당시 기록한 한 장면의 결과이며, cache와 Particle LOD가 추가된 커밋 이력과 함께 확인했습니다.
+
+### 렌더링 관측의 한계
+
+원본 profiler log와 반복 측정 분포는 남아 있지 않습니다. 따라서 이 관측값을 다른 scene, 장비, 맵 크기까지 일반화하거나 병목 비중을 수치로 단정하지 않습니다.
 
 ## 검증 범위와 한계
 
 - 육각 타일 경로 탐색의 최단 경로 최적성은 검증하지 않았습니다.
 - 10.7fps와 60fps는 같은 환경의 전후 관측값이며 장기 frame time 자료가 남아 있지 않습니다.
-- 이 포트폴리오 branch에는 별도의 자동화 테스트 명령이 없습니다. 구현 근거는 소스와 Git history로 확인했습니다.
+- 이 포트폴리오 branch에는 별도의 자동화 테스트 명령이 없습니다. 구현 근거는 README와 Git history로 확인했습니다.
 - 프로젝트 저장소는 Unity 2021.3.15f1을 기준으로 합니다.
 
 ## 실행 방법
