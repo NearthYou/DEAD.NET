@@ -115,7 +115,13 @@ Renderer 참조와 직전 표시 상태를 cache해 달라진 대상만 처리�
 
 #### 성능 개선 결과
 
-같은 장비와 scene에서 Editor frame rate를 10.7fps에서 60fps까지 높였습니다.
+| 개선 전 Statistics | 개선 작업 후 Profiler |
+| --- | --- |
+| ![개선 전 10.7 FPS와 93.3ms가 표시된 Unity Statistics](docs/images/performance-before.png) | ![개선 작업 후 CPU Usage와 Rendering 흐름을 확인한 Unity Profiler](docs/images/performance-profiler.png) |
+
+개선 전 Statistics에는 10.7 FPS와 main thread 93.3ms가 기록돼 있습니다. renderer cache, 변경된 대상만 갱신하는 visibility 처리와 Particle LOD를 적용한 뒤에는 일반 frame이 Profiler의 16ms 기준선 부근으로 돌아왔습니다. Profiler에는 일반 frame과 scene 전환 중 spike가 함께 보입니다.
+
+같은 장비와 scene에서 Editor frame rate를 10.7 FPS에서 목표 60 FPS 구간까지 회복했습니다.
 
 ## 실행 방법
 
