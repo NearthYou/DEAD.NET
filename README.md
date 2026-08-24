@@ -113,9 +113,15 @@ Drone과 Zombie는 육각 타일에서 다음 이동 후보를 골라야 했습�
 
 Renderer 참조와 직전 표시 상태를 cache해 달라진 대상만 처리했습니다. 이후 Particle LOD가 시야와 플레이어 거리를 기준으로 파티클을 나눠 갱신하도록 분리했습니다.
 
-#### 성능 개선 결과
+#### 같은 지도 화면에서 다시 측정
 
-같은 장비와 scene에서 Editor frame rate를 10.7fps에서 60fps까지 높였습니다.
+| 최적화 전 | 최적화 후 |
+| --- | --- |
+| ![최적화 전 지도 화면과 Unity Statistics](docs/images/performance-before.png) | ![최적화 후 같은 지도 화면과 Unity Statistics](docs/images/performance-after.png) |
+
+Unity 2021.3.15f1의 `0. TestTitle`에서 메인 퀘스트를 시작한 뒤 지도 화면을 열었습니다. Game View는 Full HD로 맞추고, 두 버전에 같은 맵 시드와 배치 난수를 사용했습니다.
+
+Statistics에서 최적화 전은 66.0 FPS, 메인 스레드 15.1ms, 삼각형 382.7k였고 최적화 후는 72.1 FPS, 13.9ms, 200.3k였습니다. 같은 화면에서 시야 밖 모델과 애니메이션을 줄인 결과가 렌더링 수치에 함께 나타납니다.
 
 ## 실행 방법
 
