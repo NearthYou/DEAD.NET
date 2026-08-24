@@ -121,25 +121,25 @@ Renderer 참조와 직전 표시 상태를 cache해 달라진 대상만 처리�
 
 #### 같은 지도 화면에서 다시 측정
 
-Unity 2021.3.15f1 Editor에서 플레이어와 카메라를 같은 위치에 두고 Game View Statistics를 확인했습니다.
+동적 오브젝트가 매번 다르게 놓이는 문제를 피하려고 지도와 구조물만 남겨 두었습니다. 두 버전 모두 Unity 2021.3.15f1 Editor의 같은 지도와 카메라에서 실행했고, Statistics의 Triangles는 54.4k, Batches는 718로 같습니다.
 
-| 항목 | 최적화 전 | 최적화 후 | 변화 |
-| --- | ---: | ---: | ---: |
-| FPS | 66.0 | 72.1 | +6.1 |
-| CPU main | 15.1ms | 13.9ms | -1.2ms |
-| Triangles | 382.7k | 200.3k | -182.4k |
-| Visible skinned meshes | 21 | 9 | -12 |
-| Animator components playing | 591 | 526 | -65 |
+| 항목 | 최적화 전 | 최적화 후 |
+| --- | ---: | ---: |
+| FPS | 136.0 | 144.4 |
+| CPU main | 7.4ms | 6.9ms |
+| Render thread | 5.5ms | 5.3ms |
+| Batches | 718 | 718 |
+| Triangles | 54.4k | 54.4k |
 
-렌더링 대상과 애니메이션 갱신 대상을 줄인 뒤 triangle, visible skinned mesh와 animator component 수가 함께 감소했고 CPU main과 FPS도 같은 방향으로 변했습니다.
+같은 렌더링량에서 CPU main frame time은 7.4ms에서 6.9ms로 줄었습니다. 아래에는 Statistics를 켠 전후 전체 화면을 각각 넣었습니다.
 
 ##### 최적화 전 전체 화면
 
-![최적화 전 지도 화면과 Unity Statistics](docs/images/performance-before.png)
+![최적화 전 전체 지도 화면과 Unity Statistics](docs/images/performance-before.png)
 
 ##### 최적화 후 전체 화면
 
-![최적화 후 같은 지도 화면과 Unity Statistics](docs/images/performance-after.png)
+![최적화 후 전체 지도 화면과 Unity Statistics](docs/images/performance-after.png)
 
 ## 실행 방법
 
