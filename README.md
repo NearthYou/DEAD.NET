@@ -137,17 +137,9 @@ Unity 2021.3.15f1 Editor에서 플레이어와 카메라를 같은 위치에 두
 
 ![최적화 전 지도 화면과 Unity Statistics](docs/images/performance-before.png)
 
-##### 최적화 전 Statistics 확대
-
-![최적화 전 Unity Statistics 확대](docs/images/performance-before-stats.png)
-
 ##### 최적화 후 전체 화면
 
 ![최적화 후 같은 지도 화면과 Unity Statistics](docs/images/performance-after.png)
-
-##### 최적화 후 Statistics 확대
-
-![최적화 후 Unity Statistics 확대](docs/images/performance-after-stats.png)
 
 ## 실행 방법
 
