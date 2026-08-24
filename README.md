@@ -6,6 +6,12 @@
 
 [![DEAD.NET 실제 플레이](https://img.youtube.com/vi/fxQpeaKqd0A/maxresdefault.jpg)](https://www.youtube.com/watch?v=fxQpeaKqd0A)
 
+## 시작한 이유
+
+Unity에서 캐릭터 한 명을 움직이는 데서 나아가, 여러 유닛이 같은 육각 타일 규칙을 공유하는 전략 게임을 팀으로 완성해 보고 싶었습니다.
+
+제한된 시야 안에서 탐색기와 교란기를 배치하고, 좀비의 목표를 바꾸며 탈출 경로를 만드는 플레이를 중심에 두었습니다. 이 과정에서 좀비 판단, 타일 경로 탐색과 다수 오브젝트의 렌더링을 함께 다뤘습니다.
+
 ## 프로젝트 개요
 
 | 항목 | 내용 |
@@ -115,16 +121,42 @@ Renderer 참조와 직전 표시 상태를 cache해 달라진 대상만 처리�
 
 #### 같은 지도 화면에서 다시 측정
 
-| 최적화 전 | 최적화 후 |
-| --- | --- |
-| ![최적화 전 지도 화면과 Unity Statistics](docs/images/performance-before.png) | ![최적화 후 같은 지도 화면과 Unity Statistics](docs/images/performance-after.png) |
+Unity 2021.3.15f1 Editor에서 플레이어와 카메라를 같은 위치에 두고 Game View Statistics를 확인했습니다.
 
-Unity 2021.3.15f1의 `0. TestTitle`에서 메인 퀘스트를 시작한 뒤 지도 화면을 열었습니다. Game View는 Full HD로 맞추고, 두 버전에 같은 맵 시드와 배치 난수를 사용했습니다.
+| 항목 | 최적화 전 | 최적화 후 | 변화 |
+| --- | ---: | ---: | ---: |
+| FPS | 66.0 | 72.1 | +6.1 |
+| CPU main | 15.1ms | 13.9ms | -1.2ms |
+| Triangles | 382.7k | 200.3k | -182.4k |
+| Visible skinned meshes | 21 | 9 | -12 |
+| Animator components playing | 591 | 526 | -65 |
 
-Statistics에서 최적화 전은 66.0 FPS, 메인 스레드 15.1ms, 삼각형 382.7k였고 최적화 후는 72.1 FPS, 13.9ms, 200.3k였습니다. 같은 화면에서 시야 밖 모델과 애니메이션을 줄인 결과가 렌더링 수치에 함께 나타납니다.
+렌더링 대상과 애니메이션 갱신 대상을 줄인 뒤 triangle, visible skinned mesh와 animator component 수가 함께 감소했고 CPU main과 FPS도 같은 방향으로 변했습니다.
+
+##### 최적화 전 전체 화면
+
+![최적화 전 지도 화면과 Unity Statistics](docs/images/performance-before.png)
+
+##### 최적화 전 Statistics 확대
+
+![최적화 전 Unity Statistics 확대](docs/images/performance-before-stats.png)
+
+##### 최적화 후 전체 화면
+
+![최적화 후 같은 지도 화면과 Unity Statistics](docs/images/performance-after.png)
+
+##### 최적화 후 Statistics 확대
+
+![최적화 후 Unity Statistics 확대](docs/images/performance-after-stats.png)
 
 ## 실행 방법
 
 1. Unity Hub에서 Unity 2021.3.15f1로 프로젝트를 엽니다.
 2. Package Manager가 의존성을 복원할 때까지 기다립니다.
 3. 게임 시작 장면에서 Play를 실행합니다.
+
+## 남은 과제
+
+- 좀비의 목표 우선순위와 감지 범위를 data로 분리
+- 육각 타일 경로와 시야 변경을 검사하는 PlayMode test 추가
+- 대규모 좀비 전투에서 Particle LOD와 갱신 주기 세분화
