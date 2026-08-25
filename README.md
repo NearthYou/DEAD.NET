@@ -135,11 +135,15 @@ Renderer 참조와 직전 표시 상태를 cache해 달라진 대상만 처리�
 
 ##### 최적화 전 전체 화면
 
-![최적화 전 전체 지도 화면과 Unity Statistics](docs/images/performance-before.png)
+![최적화 전 전체 지도 화면과 Unity Statistics 확대](docs/images/performance-before-annotated.png)
+
+[원본 PNG](docs/images/performance-before.png)
 
 ##### 최적화 후 전체 화면
 
-![최적화 후 전체 지도 화면과 Unity Statistics](docs/images/performance-after.png)
+![최적화 후 전체 지도 화면과 Unity Statistics 확대](docs/images/performance-after-annotated.png)
+
+[원본 PNG](docs/images/performance-after.png)
 
 ## 실행 방법
 
